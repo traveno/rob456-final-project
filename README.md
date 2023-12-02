@@ -8,9 +8,13 @@
 
 [Stephen Fike](https://github.com/traveno)
 
+### Environment
+* ROS Noetic
+
 ### Compiling and sourcing
+* `source /opt/ros/noetic/setup.bash` (if not already sourced)
 * `catkin_make` (from root level repo directory)
-* `source devel/setup.bash`
+* `source ./devel/setup.bash` (from root level repo directory)
 
 ### To get things running (in the context of lab 2)
 Ensure `devel/setup.bash` is sourced for any terminals running these commands.
