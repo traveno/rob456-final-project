@@ -1,7 +1,7 @@
 ---
 common:
   # The default window will be the one displayed when first connecting to the tmux session
-  default_window: user_code 
+  default_window: student_controller 
 
 # Everything will be opened in windows. Windows can have multiple splits.
 windows:
