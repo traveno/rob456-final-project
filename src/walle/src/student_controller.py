@@ -7,6 +7,7 @@ import signal
 
 from controller import RobotController
 
+from tf_repeated_data_suppress import suppress_TF_REPEATED_DATA
 
 class StudentController(RobotController):
 	'''
@@ -59,6 +60,7 @@ class StudentController(RobotController):
 if __name__ == '__main__':
 	# Initialize the node.
 	rospy.init_node('student_controller', argv=sys.argv)
+	suppress_TF_REPEATED_DATA()
 
 	# Start the controller.
 	controller = StudentController()

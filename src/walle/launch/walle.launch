@@ -7,7 +7,7 @@
 	<include file="$(find stage_osu)/launch/simple_rooms.launch" />
 
 	<!-- Start a custom rviz, and a logger so we can see the log messages we want. -->
-	<node pkg="rviz" name="rviz" type="rviz" args="-d $(find lab3)/config/nav.rviz" />
+	<node pkg="rviz" name="rviz" type="rviz" args="-d $(find walle)/config/nav.rviz" />
 	<node pkg="rqt_console" name="rqt_console" type="rqt_console" />
 
 	<!-- Start the SLAM node. -->
@@ -15,6 +15,7 @@
 		<remap from="scan" to="base_scan" />
 	</node>
 
-	<node pkg="lab3" name="driver" type="student_driver.py" />
+	<node pkg="walle" name="driver" type="student_driver.py" />
+  <node pkg="walle" name="controller" type="student_controller.py" />
 
 </launch>

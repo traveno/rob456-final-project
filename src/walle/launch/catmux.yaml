@@ -1,0 +1,42 @@
+---
+common:
+  # The default window will be the one displayed when first connecting to the tmux session
+  default_window: user_code 
+
+# Everything will be opened in windows. Windows can have multiple splits.
+windows:
+  - name: core
+    layout: even-horizontal
+    splits:
+      - commands:
+        - roscore
+      - commands:
+        - sleep 1
+        - rosparam set use_sim_time true
+    delay: 1
+  - name: env
+    layout: even-horizontal # One can use the default layouts specified by tmux
+    splits:
+      - commands:
+        - rviz -d src/walle/config/nav.rviz
+      - commands:
+        - sleep 1
+        - roslaunch stage_osu simple_rooms.launch
+    delay: 1
+  - name: logs
+    commands:
+      - rqt_console
+  - name: slam
+    commands:
+      - rosrun gmapping slam_gmapping __name:SLAM scan:=base_scan
+  - name: map_saver
+    commands:
+      - rosrun map_server map_saver -f slam_map
+  - name: student_driver
+    splits:
+      - commands:
+        - rosrun walle student_driver.py
+  - name: student_controller
+    splits:
+      - commands:
+        - rosrun walle student_controller.py

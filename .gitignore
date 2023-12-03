@@ -2,3 +2,6 @@ build
 devel
 .catkin_workspace
 .DS_Store
+__pycache__
+_student_*
+slam_map.*
