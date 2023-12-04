@@ -1,0 +1,26 @@
+name: rosbox
+services:
+  dev_environment:
+    container_name: dev_environment
+    image: traveno/ros-noetic-workspace:0.0.4
+    volumes:
+      - .:/ros2_ws
+    environment:
+      - DISPLAY=vnc_server:0.0
+    networks:
+      - x11
+    stdin_open: true
+    tty: true
+  vnc_server:
+    container_name: vnc_server
+    image: traveno/ros-noetic-window-server:0.0.4
+    ports:
+      - "5900:5900"
+      - "8080:8080"
+    networks:
+      - x11
+    restart: on-failure
+    environment:
+      THEME: Win98
+networks:
+  x11:
