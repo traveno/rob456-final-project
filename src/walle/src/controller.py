@@ -15,7 +15,7 @@ from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker, MarkerArray
 
 import actionlib
-from lab2.msg import NavTargetAction, NavTargetActionGoal
+from walle.msg import NavTargetAction, NavTargetActionGoal
 
 
 class RobotController:

@@ -15,8 +15,7 @@ from tf.transformations import euler_from_quaternion
 import actionlib
 import tf
 
-from lab2.msg import NavTargetAction, NavTargetResult, NavTargetFeedback
-
+from walle.msg import NavTargetAction, NavTargetResult, NavTargetFeedback
 
 class Driver:
 	def __init__(self, position_source, threshold=0.1):
