@@ -13,7 +13,7 @@ services:
     tty: true
   vnc_server:
     container_name: vnc_server
-    image: traveno/ros-noetic-window-server:0.0.4
+    image: traveno/ros-noetic-window-server:0.0.5
     ports:
       - "5900:5900"
       - "8080:8080"
@@ -21,6 +21,6 @@ services:
       - x11
     restart: on-failure
     environment:
-      THEME: Win98
+      THEME: WindowLab
 networks:
   x11:
