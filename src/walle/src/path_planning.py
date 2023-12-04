@@ -192,61 +192,77 @@ def dijkstra(im, robot_loc, goal_loc):
 
         # TODO
         #  Step 1: Break out of the loop if node_ij is the goal node
+        if node_ij == goal_loc:
+            break
         #  Step 2: If this node is closed, skip it
+        if visited_closed_yn:
+            continue
         #  Step 3: Set the node to closed
+        visited[node_ij] = (visited_distance, visited_parent, True)
         #    Now do the instructions from the slide (the actual algorithm)
         #  Lec 8_1: Planning, at the end
         #  https://docs.google.com/presentation/d/1pt8AcSKS2TbKpTAVV190pRHgS_M38ldtHQHIltcYH6Y/edit#slide=id.g18d0c3a1e7d_0_0
-
-        # Step 1, if node is the goal, stop
-        if node_ij == goal_loc:
-            break
-        
-        # Step 2, if node is closed, skip
-        if visited_closed_yn:
-            continue
-        
-        # Step 3, set node to closed
-        visited[node_ij] = (visited_distance, visited_parent, True)
-
-        # Explore eight surrounding neighbors
-        for neighbor_ij in eight_connected(node_ij):
-            if not is_free(im, neighbor_ij):
+        for neighbor in eight_connected(node_ij):
+            if not is_free(im, neighbor): #skip over if pixel is full
                 continue
-            
-            # Calculate the neighbors distance
-            neighbor_distance = visited_distance + np.sqrt(np.abs(neighbor_ij[0] - node_ij[0]) + np.abs(neighbor_ij[1] - node_ij[1]))
 
-            # If we haven't visited this neighbor, or we've found a shorter path, do an update
-            if (neighbor_ij not in visited) or (neighbor_distance < visited[neighbor_ij][0]):
-                # Update distance and parent in visited for this neighbor
-                visited[neighbor_ij] = (neighbor_distance, node_ij, False)
-                # Push the neighbor onto the priority queue
-                heapq.heappush(priority_queue, (neighbor_distance, neighbor_ij))
+            # edge weight is just the euclidean distance
+            # temp_distance is just current node score + euclidean distance unless there is a wall in the way
+            # set all distances to 1
+            # if we were doing something more complicated edge_weight would actually be the dist between current i,j and neighbor i,j
+            # gonna actually use a special flavor of dijkstra's here instead of A*
+            # Uniform cost search! Basically if we've visited a node decrease it's key- else add it to the queue
+            # psuedocode here: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs
 
+            #first set edge weight
+            if node_ij[1] == neighbor[1]: #if these are the same location
+                edge_weight = 1
+            else:
+                edge_weight = np.sqrt(2)
+
+            #calculate cost to get to next node (current node score + edge_weight)
+            cost = node_score + edge_weight
+
+            if neighbor not in visited:
+                #add to priority queue and visited dictionary
+                visited[neighbor] = (cost, node_ij, False)
+                heapq.heappush(priority_queue, (cost, neighbor))
+            elif visited[neighbor][0] > cost: #if already visited and higher cost
+                #replace existing neighbor with new tuple with cost = to lower value
+                visited[neighbor] = (cost, node_ij, False)
+
+    
     # Now check that we actually found the goal node
-    try_2 = goal_loc
+    try_2 = None
     if not goal_loc in visited:
         # TODO: Deal with not being able to get to the goal loc
-        # BEGIN SOLULTION
-        best = 1e30
-        for v in visited:
-            if v[0] < best:
-                best = v[0]
-                try_2 = v[1]
-        return dijkstra(im, robot_loc, try_2)
-        raise ValueError(f"Goal {goal_loc} not reached")
-        return []
+        # we basically just want to go to the closest node to the goal that we visted
+        distance = []
+        for i, j in visited:
+            dist = np.sqrt((goal_loc[0] - i) ** 2 + (goal_loc[1] - j) ** 2)
+            distance.append(dist)
+        
+        #find closest distance
+        closest_idx = np.argmin(distance)
+        k, v = list(visited.items())[closest_idx] #get closest i,j pair out of dictionary
+        print("Key:", k)
+        print("Val:", v)
+
+        try_2 = k
+        if(try_2 is not None):
+            return dijkstra(im, robot_loc, try_2)
+        else:
+            raise ValueError(f"Goal {goal_loc} not reached")
+
 
     path = []
     path.append(goal_loc)
     # TODO: Build the path by starting at the goal node and working backwards
     current_node = goal_loc
-    while current_node is not None:
-        path.insert(0, current_node)
-        # Get the parent node and set current
-        current_node = visited[current_node][1]
-
+    #loop until we get back to robot location
+    while current_node != robot_loc:
+        current_node = visited[current_node][1] #get i,j location of current in visited array
+        path.append(current_node)
 
     return path
 
