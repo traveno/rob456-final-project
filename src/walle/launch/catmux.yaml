@@ -29,9 +29,9 @@ windows:
   - name: slam
     commands:
       - rosrun gmapping slam_gmapping __name:SLAM scan:=base_scan
-  - name: map_saver
-    commands:
-      - rosrun map_server map_saver -f slam_map
+  # - name: map_saver
+  #   commands:
+  #     - rosrun map_server map_saver -f slam_map
   - name: slam_processor
     commands:
       - rosrun walle slam.py

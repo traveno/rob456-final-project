@@ -1,5 +1,5 @@
-walle/SLAM update
+nav_msgs/OccupancyGrid map
 ---
-float32[] best
+walle/ProcessedMap pmap
 ---
 std_msgs/Float32 progress

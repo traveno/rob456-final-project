@@ -1,21 +1,13 @@
 #!/usr/bin/env python3
-
-
 import sys
 import rospy
-import signal
 import numpy as np
-from math import floor
 
 from controller import RobotController
-import path_planning
-import exploring
 import actionlib
-import math
 
-from walle.msg import SLAMAction, SLAMGoal, SLAM
+from walle.msg import SLAMAction, SLAMGoal
 
-from tf_repeated_data_suppress import suppress_TF_REPEATED_DATA
 
 class StudentController(RobotController):
 	'''
@@ -27,8 +19,6 @@ class StudentController(RobotController):
 		super().__init__()
 		self.slam_client = actionlib.SimpleActionClient('slam_processor', SLAMAction)
 		self.slam_client.wait_for_server()
-		self.slam_processing = False
-		self.robot_position = None
 		
 
 	def distance_update(self, distance):
@@ -45,22 +35,14 @@ class StudentController(RobotController):
 		# rospy.loginfo(f'Distance: {distance}')
 
 	def slam_update(self, state, result):
-		points = result.best
-		waypoints = np.array(points, dtype=tuple).reshape(-1, 2)
+		raw_width = result.pmap.width.data
+		raw_thresh = result.pmap.thresh.data
+		raw_unseen = result.pmap.unseen.data
 		
-		if len(waypoints) > 0 and self.robot_position is not None:
-			best = 1e30
-			best_index = 0
-			for i, point in enumerate(waypoints):
-				distance = math.sqrt((self.robot_position[0] - point[0])**2 + (self.robot_position[1] - point[1])**2)
-				if distance < best:
-					best = distance
-					best_index = i
+		map_thresh = np.fromiter(raw_thresh, int).reshape(-1, raw_width)
+		map_unseen = [(x, y) for x, y in np.fromiter(raw_unseen, tuple).reshape(-1, 2)]
 
-			self.set_waypoints(waypoints[best_index:])
-			
-		self.slam_processing = False
-		rospy.loginfo(f'Got SLAM update! {waypoints}')
+		rospy.loginfo(f'Got SLAM update from callback')
 
 
 	def map_update(self, point, map, map_data):
@@ -77,27 +59,19 @@ class StudentController(RobotController):
 		'''
 		rospy.loginfo('Got a map update.')
 
-		if self.slam_processing:
-			rospy.loginfo(f'SLAM is still being processed')
-			return
-
 		# It's possible that the position passed to this function is None.  This try-except block will deal
 		# with that.  Trying to unpack the position will fail if it's None, and this will raise an exception.
 		# We could also explicitly check to see if the point is None.
 		try:
 			# The (x, y) position of the robot can be retrieved like this.
 			robot_position = (point.point.x, point.point.y)
-			self.robot_position = robot_position
-
-			slam_obj = SLAM()
-			slam_obj.map = map
-			slam_obj.pos = point
-
-			slam_goal = SLAMGoal()
-			slam_goal.update = slam_obj
-			self.slam_client.send_goal(slam_goal, self.slam_update)
 		except:
 			rospy.loginfo('No odometry information')
+
+		# Send the SLAM map out for processing
+		slam_goal = SLAMGoal()
+		slam_goal.map = map
+		self.slam_client.send_goal(slam_goal, self.slam_update)
 			
 
 if __name__ == '__main__':

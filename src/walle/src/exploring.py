@@ -140,11 +140,11 @@ def find_all_possible_goals(im):
             return
 
       if has_unseen_neighbor and len(seen_neighbors) >= 2:
-        for point in seen_neighbors: goals.add(point)
+        for point in seen_neighbors: goals.add((point[0], point[1], 0))
     
     free = np.where(im == 255)
     for i, j in zip(free[0], free[1]): process_point(i, j)
-    return list(goals)
+    return np.fromiter(list(goals), dtype='float64')
 
 
 def find_best_point(im, possible_points, robot_loc):

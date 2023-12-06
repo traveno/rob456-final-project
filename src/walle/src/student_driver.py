@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import sys
 import rospy
 import numpy as np
@@ -8,8 +7,6 @@ import numpy as np
 from new_driver import Driver
 
 from math import atan2, pi, sqrt
-
-from tf_repeated_data_suppress import suppress_TF_REPEATED_DATA
 
 class StudentDriver(Driver):
 	'''

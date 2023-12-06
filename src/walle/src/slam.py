@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
 import rospy
-
-from walle.srv import ProcessSLAM, ProcessSLAMResponse
 import actionlib
 import numpy as np
-import path_planning, exploring
-from math import floor, trunc
-import tf
-from walle.msg import SLAMAction, SLAMResult
+from math import trunc
+from walle.msg import SLAMAction, SLAMResult, ProcessedMap
+from scipy import ndimage
 
 def map_to_pixel(map_info, location):
 	x = trunc((location[0] - map_info.origin.position.x) / map_info.resolution)
@@ -24,61 +21,42 @@ class SLAMServer:
 	def __init__(self):
 		self.server = actionlib.SimpleActionServer('slam_processor', SLAMAction, self.execute, False)
 		self.server.start()
-		self.transform_listener = tf.TransformListener()
 
 	def execute(self, message):
-		map = message.update.map
-		pos = message.update.pos
+		rospy.loginfo(f'Received SLAM map to process')
+		map = message.map
 
-		robot_position = map_to_pixel(map.info, (pos.point.x, pos.point.y))
 		map_thresh = self.process_map(map)
+		map_unseen = self.find_unseen(map_thresh)
 
-		# rospy.loginfo(f'Unique values in map_thresh: {np.unique(map_thresh)}')
-		# rospy.loginfo(f'Robot position {robot_position}')
-		# rospy.loginfo(f'Walls: {len(np.where(map_thresh == 0))} Free: {len(np.where(map_thresh == 255))} Unseen: {len(np.where(map_thresh == 128))}')
+		# exploring.plot_with_explore_points(map_thresh, 0.1, explore_points=map_unseen)
 
-		map_unseen = exploring.find_all_possible_goals(map_thresh)
-		map_waypoints, goal_point = self.make_waypoints(map_thresh, map_unseen, robot_position)
-
-		if map_waypoints is None:
-			rospy.loginfo('No waypoints created')
-			response = SLAMResult()
-			response.best = []
-			self.server.set_aborted(response)
-			return
-
-		waypoints = []
-		for mw in map_waypoints:
-			waypoints.extend(pixel_to_map(map.info, (float(mw[0]), float(mw[1]))))
-
-		# rospy.loginfo(f'New waypoints: {waypoints}')
-		exploring.plot_with_explore_points(map_thresh, 0.1, robot_position, map_unseen, goal_point)
+		pmap = ProcessedMap()
+		pmap.thresh.data = tuple(map_thresh.flatten().astype(int))
+		pmap.unseen.data = tuple(map_unseen.flatten().astype(int))
+		pmap.width.data = map.info.width
 
 		response = SLAMResult()
-		response.best = waypoints
+		response.pmap = pmap
 
 		self.server.set_succeeded(response)
+		rospy.loginfo(f'SLAM map processing complete')
 
 	def process_map(self, map):
-		map_2d = np.zeros((map.info.height, map.info.width))
+		map_2d = np.fromiter(map.data, int).reshape(-1, map.info.width)
 
-		for i in range(len(map.data)):
-			map_2d[floor(i / map.info.width)][i % map.info.width] = map.data[i]
-
-		map_ret = np.zeros((map.info.height, map.info.width)) + 128
+		map_ret = np.zeros((map.info.height, map.info.width), dtype=int) + 128
 		map_ret[map_2d == 100] = 0
 		map_ret[map_2d == 0] = 255
 
 		return map_ret
 
-	def make_waypoints(self, map_thresh, map_unseen, robot_position):
-		best_point = exploring.find_best_point(map_thresh, map_unseen, robot_position)
-		if best_point is None: return None
-		path = path_planning.dijkstra(map_thresh, robot_position, best_point)
-		print(f'Path {path}')
-		waypoints = exploring.find_waypoints(map_thresh, path)
-		print(f'Waypoints {waypoints}')
-		return waypoints, best_point
+	def find_unseen(self, map):
+		# Binary dilation, quite handy
+		seen_mask = (map == 255)
+		eroded_mask = ndimage.binary_dilation(seen_mask, np.ones((3, 3), dtype=bool))
+		unseen = np.flip(np.argwhere((eroded_mask ^ seen_mask) & (map == 128)))
+		return unseen
 
 if __name__ == '__main__':
 	rospy.init_node('slam_processor')
