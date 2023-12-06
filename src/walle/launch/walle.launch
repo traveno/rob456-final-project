@@ -17,5 +17,5 @@
 
 	<node pkg="walle" name="driver" type="student_driver.py" />
   <node pkg="walle" name="controller" type="student_controller.py" />
-
+  <node pkg="walle" name="slam_processor" type="slam.py" />
 </launch>

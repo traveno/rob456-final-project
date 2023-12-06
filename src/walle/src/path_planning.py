@@ -18,6 +18,9 @@ import heapq
 
 # Using imageio to read in the image
 import imageio
+import yaml
+
+from math import atan2, pi, sqrt
 
 
 # -------------- Showing start and end and path ---------------
@@ -69,13 +72,15 @@ def plot_with_path(im, im_threshhold, zoom=1.0, robot_loc=None, goal_loc=None, p
         axs[i].set_xlim(width / 2 - zoom * width / 2, width / 2 + zoom * width / 2)
         axs[i].set_ylim(height / 2 - zoom * height / 2, height / 2 + zoom * height / 2)
 
+    plt.savefig('path.png')
+
 
 # -------------- Thresholded image True/False ---------------
 def is_wall(im, pix):
     """ Is the pixel a wall pixel?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 0:
+    if im[pix[1]][pix[0]] == 0:
         return True
     return False
 
@@ -84,7 +89,7 @@ def is_unseen(im, pix):
     """ Is the pixel one we've seen?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 128:
+    if im[pix[1]][pix[0]] == 128:
         return True
     return False
 
@@ -93,7 +98,7 @@ def is_free(im, pix):
     """ Is the pixel empty?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 255:
+    if im[pix[1]][pix[0]] == 255:
         return True
     return False
 
@@ -145,6 +150,16 @@ def eight_connected(pix):
             ret = pix[0] + i, pix[1] + j
             yield ret
 
+def near_connected(pix):
+    """ Generator function for 8 neighbors
+    @param im - the image
+    @param pix - the i, j location to iterate around"""
+    for i in range(-2, 3):
+        for j in range(-2, 3):
+            if i == 0 and j == 0:
+                pass
+            ret = pix[0] + i, pix[1] + j
+            yield ret
 
 def dijkstra(im, robot_loc, goal_loc):
     """ Occupancy grid image, with robot and goal loc as pixels
@@ -154,8 +169,8 @@ def dijkstra(im, robot_loc, goal_loc):
     @returns a list of tuples"""
 
     # Sanity check
-    if not is_free(im, robot_loc):
-        raise ValueError(f"Start location {robot_loc} is not in the free space of the map")
+    # if not is_free(im, robot_loc):
+    #     raise ValueError(f"Start location {robot_loc} is not in the free space of the map")
 
     if not is_free(im, goal_loc):
         raise ValueError(f"Goal location {goal_loc} is not in the free space of the map")
@@ -166,7 +181,7 @@ def dijkstra(im, robot_loc, goal_loc):
     # Push the start node onto the queue
     #   push takes the queue itself, then a tuple with the first element the priority value and the second
     #   being whatever data you want to keep - in this case, the robot location, which is a tuple
-    heapq.heappush(priority_queue, (0, robot_loc))
+    heapq.heappush(priority_queue, (sqrt((robot_loc[0] - goal_loc[0])**2 + (robot_loc[1] - goal_loc[1])**2), robot_loc))
 
     # The power of dictionaries - we're going to use a dictionary to store every node we've visited, along
     #   with the node we came from and the current distance
@@ -174,7 +189,7 @@ def dijkstra(im, robot_loc, goal_loc):
     visited = {}
     # Use the (i,j) tuple to index the dictionary
     #   Store the best distance, the parent, and if closed y/n
-    visited[robot_loc] = (0, None, False)   # For every other node this will be the current_node, distance
+    visited[robot_loc] = (sqrt((robot_loc[0] - goal_loc[0])**2 + (robot_loc[1] - goal_loc[1])**2), None, False)   # For every other node this will be the current_node, distance
 
     # While the list is not empty - use a break for if the node is the end node
     while priority_queue:
@@ -214,13 +229,20 @@ def dijkstra(im, robot_loc, goal_loc):
             if not is_free(im, neighbor_ij):
                 continue
             
+            penalty = 0
+            near = near_connected(neighbor_ij)
+            for near_neighbor in near:
+                if im[near_neighbor[1], near_neighbor[0]] == 0:
+                    penalty += 25
+            
             # Calculate the neighbors distance
-            neighbor_distance = visited_distance + np.sqrt(np.abs(neighbor_ij[0] - node_ij[0]) + np.abs(neighbor_ij[1] - node_ij[1]))
+            neighbor_distance = sqrt((neighbor_ij[0] - goal_loc[0])**2 + (neighbor_ij[1] - goal_loc[1])**2) + penalty
 
             # If we haven't visited this neighbor, or we've found a shorter path, do an update
             if (neighbor_ij not in visited) or (neighbor_distance < visited[neighbor_ij][0]):
                 # Update distance and parent in visited for this neighbor
                 visited[neighbor_ij] = (neighbor_distance, node_ij, False)
+
                 # Push the neighbor onto the priority queue
                 heapq.heappush(priority_queue, (neighbor_distance, neighbor_ij))
 
@@ -230,10 +252,10 @@ def dijkstra(im, robot_loc, goal_loc):
         # TODO: Deal with not being able to get to the goal loc
         # BEGIN SOLULTION
         best = 1e30
-        for v in visited:
+        for k, v in visited.items():
             if v[0] < best:
                 best = v[0]
-                try_2 = v[1]
+                try_2 = k
         return dijkstra(im, robot_loc, try_2)
         raise ValueError(f"Goal {goal_loc} not reached")
         return []
@@ -275,41 +297,3 @@ def open_image(im_name):
     im_thresh = convert_image(im, wall_threshold, free_threshold)
     return im, im_thresh
 
-
-
-if __name__ == '__main__':
-    # Putting this here because in JN it's yaml
-    import yaml_1 as yaml
-
-    # Use one of these
-
-    """ Values for SLAM map
-    im, im_thresh = open_image("SLAM_map.png")
-    robot_start_loc = (200, 150)
-    # Closer one to try
-    # robot_goal_loc = (315, 250)
-    robot_goal_loc = (615, 850)
-    zoom = 0.8
-    """
-
-    """ Values for map.pgm"""
-    im, im_thresh = open_image("map.pgm")
-    robot_start_loc = (1940, 1953)
-    robot_goal_loc = (2135, 2045)
-    zoom = 0.1
-
-    """
-    print(f"Image shape {im_thresh.shape}")
-    for i in range(0, im_thresh.shape[1]-1):
-        for j in range(0, im_thresh.shape[0]-1):
-            if is_free(im_thresh, (i, j)):
-                print(f"Free {i} {j}")
-    """
-    path = dijkstra(im_thresh, robot_start_loc, robot_goal_loc)
-    plot_with_path(im, im_thresh, zoom=zoom, robot_loc=robot_start_loc, goal_loc=robot_goal_loc, path=path)
-
-    # Depending on if your mac, windows, linux, and if interactive is true, you may need to call this to get the plt
-    # windows to show
-    # plt.show()
-
-    print("Done")

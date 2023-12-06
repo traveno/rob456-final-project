@@ -93,7 +93,7 @@ class StudentDriver(Driver):
 		if (distance < close_distance):
 			command.linear.x = 0.2
 		else:
-			command.linear.x = min(0.5, 1 * distance)
+			command.linear.x = min(0.3, 0.15 * distance)
 
 		# How close should we start considering obstacles?
 		# I determined this to be 3
@@ -103,17 +103,16 @@ class StudentDriver(Driver):
 
 		# If any lidar scan comes in close, apply bias
 		# from our surrouding obstances to navigate
-		if (min(lidar.ranges) < close_distance):
-			command.angular.z = 2 * (angle / pi) + (obstacle_influence / 2)
+		if (distance < close_distance):
+			command.angular.z = 2 * (angle / pi)
 		else:
-			command.angular.z = 4 * (angle / pi)
+			command.angular.z = 4 * (angle / pi) + (obstacle_influence / 4)
 
 		return command
 
 
 if __name__ == '__main__':
 	rospy.init_node('student_driver', argv=sys.argv)
-	suppress_TF_REPEATED_DATA()
 
 	driver = StudentDriver()
 

@@ -72,6 +72,7 @@ class RobotController:
 	def _map_callback(self, map):
 		point = PointStamped()
 		point.header = self._odom.header
+		point.header.stamp = rospy.Time.now()
 		point.point = self._odom.pose.pose.position
 
 		try:

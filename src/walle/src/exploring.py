@@ -24,6 +24,7 @@ import heapq
 
 # Using imageio to read in the image
 import imageio
+from math import atan2, sqrt, pi
 
 
 # -------------- Showing start and end and path ---------------
@@ -70,6 +71,8 @@ def plot_with_explore_points(im_threshhold, zoom=1.0, robot_loc=None, explore_po
 
         axs[i].set_xlim(width / 2 - zoom * width / 2, width / 2 + zoom * width / 2)
         axs[i].set_ylim(height / 2 - zoom * height / 2, height / 2 + zoom * height / 2)
+
+    plt.savefig('map.png')
 
 
 # -------------- For converting to the map and back ---------------
@@ -120,7 +123,28 @@ def find_all_possible_goals(im):
     @param im - thresholded image
     @return dictionary or list or binary image of possible pixels"""
 
-# YOUR CODE HERE
+    goals = set()
+    
+    def process_point(i, j):
+      related = path_planning.eight_connected((i, j))
+      has_unseen_neighbor = False
+      seen_neighbors = []
+      
+      for related_i, related_j in related:
+        if 0 <= related_i < im.shape[0] and 0 <= related_j < im.shape[1]:
+          if im[related_i, related_j] == 128:
+            has_unseen_neighbor = True
+          if im[related_i, related_j] == 255:
+            seen_neighbors.append((related_j, related_i))
+          if im[related_i, related_j] == 0:
+            return
+
+      if has_unseen_neighbor and len(seen_neighbors) >= 2:
+        for point in seen_neighbors: goals.add(point)
+    
+    free = np.where(im == 255)
+    for i, j in zip(free[0], free[1]): process_point(i, j)
+    return list(goals)
 
 
 def find_best_point(im, possible_points, robot_loc):
@@ -129,7 +153,9 @@ def find_best_point(im, possible_points, robot_loc):
     @param possible_points - possible points to chose from
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
-# YOUR CODE HERE
+
+    if len(possible_points) == 0: return None
+    return max(possible_points, key=lambda p: sqrt((p[0] - robot_loc[0])**2 + (p[1] - robot_loc[1])**2))
 
 
 def find_waypoints(im, path):
@@ -138,28 +164,30 @@ def find_waypoints(im, path):
     @param path - the initial path
     @ return - a new path"""
 
-    # Again, no right answer here
-# YOUR CODE HERE
+    waypoints = [] 
+    
+    prev_theta = None
+    prev_point = None
+    
+    for point in path:
+      if prev_point is None:
+        prev_point = point
+        continue
+    
+      theta = atan2(point[0] - prev_point[0], point[1] - prev_point[1])
+    
+      if prev_theta is None:
+        prev_theta = theta
+        continue
+      
+      if not np.isclose(theta, prev_theta, atol=pi / 2):
+        waypoints.append(prev_point)
+        
+      prev_point = point
+      prev_theta = theta
 
-if __name__ == '__main__':
-    # Doing this here because it is a different yaml than JN
-    import yaml_1 as yaml
+    if len(waypoints) == 0:
+       waypoints.append(path[-1])
+        
+    return waypoints
 
-    im, im_thresh = path_planning.open_image("map.pgm")
-
-    robot_start_loc = (1940, 1953)
-
-    all_unseen = find_all_possible_goals(im_thresh)
-    best_unseen = find_best_point(im_thresh, all_unseen, robot_loc=robot_start_loc)
-
-    plot_with_explore_points(im_thresh, zoom=0.1, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=best_unseen)
-
-    path = path_planning.dijkstra(im_thresh, robot_start_loc, best_unseen)
-    waypoints = find_waypoints(im_thresh, path)
-    path_planning.plot_with_path(im, im_thresh, zoom=0.1, robot_loc=robot_start_loc, goal_loc=best_unseen, path=waypoints)
-
-    # Depending on if your mac, windows, linux, and if interactive is true, you may need to call this to get the plt
-    # windows to show
-    # plt.show()
-
-    print("Done")
