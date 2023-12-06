@@ -23,13 +23,34 @@ class StudentDriver(Driver):
 
 	def close_enough_to_waypoint(self, distance, target, lidar):
 		'''
-		This function is called perioidically if there is a waypoint set.  This is where you should put any code that
-		has a smarter stopping criteria then just checking the distance. See get_twist for the parameters; distance
-		is the current distance to the target.
+		This function is called periodically if there is a waypoint set. This function now includes
+		LiDAR data analysis to make smarter decisions about stopping criteria, taking into account
+		the proximity of obstacles in addition to the distance to the target waypoint.
+
+		Parameters:
+		- distance: Current distance to the target waypoint.
+		- target: Target waypoint coordinates.
+		- lidar: LiDAR data representing the surrounding environment.
 		'''
-		# Default behavior.
+		safe_distance = 0.5 # 0.5 meters
+
+		# IDEA: 
+		# Need to do: abandon all waypoints (when?)
+
+		# Check if within the simple distance threshold.
 		if distance < self._threshold:
-			return True
+			# get the closest distance to the front of the robot
+			thetas = np.linspace(lidar.angle_min, lidar.angle_max, len(lidar.ranges))
+			ranges = np.array(lidar.ranges)
+			y_values = ranges * np.sin(thetas)
+			front_indices = np.where(np.abs(y_values) < 0.22) # robot is 0.19 (half), increased to .22 to provide a moe for the robot
+			front_ranges = ranges[front_indices]
+
+			shortest = np.min(front_ranges)
+
+			# Check if there are no obstacles within the safe distance.
+			if shortest >= (safe_distance + 0.19): 
+				return True
 		return False
 
   # This function returns an bias of "go left" or "go right"
