@@ -110,6 +110,9 @@ def is_reachable(im, pix):
     #  False otherwise
     # You can use four or eight connected - eight will return more points
 # YOUR CODE HERE
+    for pixel in path_planning.eight_connected(im, pix): # iterate through 8 connected pixels
+        if path_planning.is_free(im, pixel): # if one of the pixels is free, return true
+            return True
     return False
 
 
@@ -121,6 +124,16 @@ def find_all_possible_goals(im):
     @return dictionary or list or binary image of possible pixels"""
 
 # YOUR CODE HERE
+    # should return a list of tuples
+    possible_goals = []
+
+    for i in range(im.shape[0]):
+        for j in range(im.shape[1]): # iterate through all pixels
+            if im[i][j] == 0: # if the pixel is unseen
+                for pixel in path_planning.eight_connected((i,j)): # the convert function may just need to be (i,j) i'm getting confused on the relation
+                    if path_planning.is_free(im, pixel):
+                        possible_goals.append(pixel) 
+    return possible_goals
 
 
 def find_best_point(im, possible_points, robot_loc):
@@ -130,6 +143,27 @@ def find_best_point(im, possible_points, robot_loc):
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
 # YOUR CODE HERE
+    # sort the possible points by distance from robot. I think that the best point to go to is the one that is furthest from the robot.
+    print("type of possible points: ", type(possible_points))
+    print("possible points: ", possible_points)
+    print("length of possible points: ", len(possible_points))
+    print("type of robot_loc: ", type(robot_loc))
+    print("robot_loc: ", robot_loc)
+    # possible points is a 
+
+
+    heap = []
+    for point in possible_points:
+        # get the distance between the robot and the point
+        x1, y1 = robot_loc
+        # print("type of point: ", type(point))
+        # print("point: ", point)
+        x2, y2 = point
+        distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+        heapq.heappush(heap, (-distance, point)) # max heap to return the point with the furthest distance. 
+    _, best_point = heapq.heappop(heap) # pop the best point. Throw away the distance and return the point
+    return best_point
+
 
 
 def find_waypoints(im, path):
@@ -140,6 +174,34 @@ def find_waypoints(im, path):
 
     # Again, no right answer here
 # YOUR CODE HERE
+    # path is a list of tuples with points in the path
+    # want to reduce the complexity of the path. I'm choosing to have a waypoint every time the path changes direction -> when the slope changes between two points
+    new_path = []
+    if len(path) < 2:
+        return path
+    new_path.append(path[0]) 
+
+    for i in range(1, len(path)-1): # iterate through the path
+        x1, y1 = path[i-1]
+        x2, y2 = path[i]
+        x3, y3 = path[i+1]
+        
+        if x2 - x1 != 0:  
+            s1 = (y2-y1)/(x2-x1) # previous slope
+        else: # can't /0
+            s1 = float('inf') if y2 - y1 > 0 else float('-inf')
+
+        if x3 - x2 != 0:  
+            s2 = (y3-y2)/(x3-x2) # next slope
+        else: # can't /0
+            s2 = float('inf') if y3 - y2 > 0 else float('-inf')
+
+        if s1 != s2:
+            new_path.append(path[i]) # waypoint at slope change
+    new_path.append(path[-1]) # final destination
+    return new_path
+
+
 
 if __name__ == '__main__':
     # Doing this here because it is a different yaml than JN
