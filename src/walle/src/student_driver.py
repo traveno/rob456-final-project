@@ -104,7 +104,7 @@ class StudentDriver(Driver):
 		# If any lidar scan comes in close, apply bias
 		# from our surrouding obstances to navigate
 		if (distance < close_distance):
-			command.angular.z = 2 * (angle / pi)
+			command.angular.z = 6 * (angle / pi)
 		else:
 			command.angular.z = 4 * (angle / pi) + (obstacle_influence / 4)
 

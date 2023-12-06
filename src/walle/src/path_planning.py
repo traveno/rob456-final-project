@@ -229,14 +229,8 @@ def dijkstra(im, robot_loc, goal_loc):
             if not is_free(im, neighbor_ij):
                 continue
             
-            penalty = 0
-            near = near_connected(neighbor_ij)
-            for near_neighbor in near:
-                if im[near_neighbor[1], near_neighbor[0]] == 0:
-                    penalty += 25
-            
             # Calculate the neighbors distance
-            neighbor_distance = sqrt((neighbor_ij[0] - goal_loc[0])**2 + (neighbor_ij[1] - goal_loc[1])**2) + penalty
+            neighbor_distance = visited_distance + np.sqrt(np.abs(neighbor_ij[0] - node_ij[0]) + np.abs(neighbor_ij[1] - node_ij[1]))
 
             # If we haven't visited this neighbor, or we've found a shorter path, do an update
             if (neighbor_ij not in visited) or (neighbor_distance < visited[neighbor_ij][0]):

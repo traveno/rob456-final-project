@@ -180,7 +180,7 @@ def find_waypoints(im, path):
         prev_theta = theta
         continue
       
-      if not np.isclose(theta, prev_theta, atol=pi / 2):
+      if not np.isclose(theta, prev_theta, atol=0.1):
         waypoints.append(prev_point)
         
       prev_point = point
