@@ -43,13 +43,15 @@ def plot_with_explore_points(im_threshhold, zoom=1.0, robot_loc=None, explore_po
     axs[0].set_title("original image")
     axs[1].imshow(im_threshhold, origin='lower', cmap="gist_gray")
     axs[1].set_title("threshold image")
-    """
+    
+    
     # Used to double check that the is_xxx routines work correctly
     for i in range(0, im_threshhold.shape[1]-1, 10):
         for j in range(0, im_threshhold.shape[0]-1, 2):
-            if is_reachable(im_thresh, (i, j)):
+            if is_reachable(im_threshhold, (i, j)):
                 axs[1].plot(i, j, '.b')
-    """
+    
+    
 
     # Show original and thresholded image
     if explore_points is not None:
@@ -109,9 +111,13 @@ def is_reachable(im, pix):
     # Returns True (the pixel is adjacent to a pixel that is free)
     #  False otherwise
     # You can use four or eight connected - eight will return more points
-# YOUR CODE HERE
-    return False
 
+    for i in path_planning.eight_connected(pix): #loop through all neighbors
+        if path_planning.is_free(im, i): #check if pixel in neighbors is free
+            return True
+        else:
+            return False
+    
 
 def find_all_possible_goals(im):
     """ Find all of the places where you have a pixel that is unseen next to a pixel that is free
@@ -120,7 +126,20 @@ def find_all_possible_goals(im):
     @param im - thresholded image
     @return dictionary or list or binary image of possible pixels"""
 
-# YOUR CODE HERE
+    #first find all empty pixels
+    empty = np.where(im == 255)
+
+    #now the goal is to find all unseen pixels connected to the empty pixels
+    possible = [] #array of (i,j) tuples
+    for i in empty: #loop through empty spaces
+        for pix in path_planning.eight_connected(i): #check neighbors of empty pixels
+            if np.any(im[pix[0]] == 128) and np.any(im[pix[1]] == 128): #check for unseen pixels
+                #check if reachable (sanity check):
+                if is_reachable(im, pix):
+                    possible.append(pix) #append unseen pixel location to list
+
+    return possible
+
 
 
 def find_best_point(im, possible_points, robot_loc):
@@ -129,8 +148,17 @@ def find_best_point(im, possible_points, robot_loc):
     @param possible_points - possible points to chose from
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
-# YOUR CODE HERE
+    #starting with the quick and dirtiest way of doing this- let's call the "best" point the point closest to the robot
+    distances = []
+    for i in possible_points:
+        #calculate euclidean distance for each point and save to array
+        dist = np.sqrt((i[0] - robot_loc[0]) ** 2 + (i[1] - robot_loc[1]) ** 2)
+        distances.append(dist)
 
+    #find location of closest distance
+    closest_idx = np.argmin(distances)
+    best_ij = possible_points[closest_idx]
+    return best_ij
 
 def find_waypoints(im, path):
     """ Place waypoints along the path
@@ -138,8 +166,29 @@ def find_waypoints(im, path):
     @param path - the initial path
     @ return - a new path"""
 
-    # Again, no right answer here
-# YOUR CODE HERE
+    #naive sample approach (just to see output)
+    #path starts at endpoint and loops back to robot's location
+    cp_path = path #copy path to new variable
+    cp_path = list(reversed(path)) #reverse list for sampling
+    
+    count = 0
+    goal_point = cp_path[-1]
+    #print(goal_point)
+    new_path = [cp_path[0]]
+    for i in cp_path:
+        count += 1
+        if count % 20 == 0:
+            new_path.append(i)
+
+    if goal_point not in new_path:
+        new_path.append(goal_point)
+
+    #print(new_path)
+    #reverse the new path again for plotting
+    new_path = list(reversed(new_path))
+    return new_path
+
+        
 
 if __name__ == '__main__':
     # Doing this here because it is a different yaml than JN

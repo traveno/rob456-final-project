@@ -6,6 +6,9 @@ import rospy
 import signal
 
 from controller import RobotController
+import path_planning as path_planning
+import exploring as exploring
+import numpy as np
 
 from tf_repeated_data_suppress import suppress_TF_REPEATED_DATA
 
@@ -17,6 +20,9 @@ class StudentController(RobotController):
 	'''
 	def __init__(self):
 		super().__init__()
+
+		self.goal = None #store goal as member of class
+
 
 	def distance_update(self, distance):
 		'''
@@ -56,6 +62,42 @@ class StudentController(RobotController):
 		except:
 			rospy.loginfo('No odometry information')
 
+	"""
+	Little two-liner function that takes in the map data and spits out an image and image threshold
+	
+	Parameters:
+			map:		An OccupancyGrid containing the current version of the map.
+	"""
+	def get_image_from_map(self, map, map_data):
+		im = np.array(map.data).reshape(map.info.height, map.info.width)
+		im_thresh = path_planning.convert_image(im, 0.7, 0.9) #borrowed from path_planning.open_image()
+
+		return im, im_thresh
+	
+	def update_path(self, map, map_data, point): #actually call dijkstra's/explore here
+		im, thresh = self.get_image_from_map(map) #get image and threshold from current map
+
+		robot_start = (point.point.x, point.point.y) #i think this is in map coordinates, if not we need to change it
+
+		if self.goal == None: #create a new path if we don't already have one
+			#get all unseen points first
+			unseen = exploring.find_all_possible_goals(thresh)
+			#check if unseen is empty - if it is we're probably done exploring!
+			if unseen is None:
+				rospy.loginfo('Either all points are found, or weird error occured')
+				return
+			else:
+				self.goal = exploring.find_best_point(thresh, unseen, robot_start)
+		
+		rospy.loginfo(f'Got a new goal: current path is from {robot_start} to {self.goal}')
+
+		path = path_planning.dijkstra(thresh, robot_start, self.goal)
+		map_waypoints = exploring.find_waypoints(thresh, path)
+
+		for i in map_waypoints:
+			#convert to x,y coordinates
+
+
 
 if __name__ == '__main__':
 	# Initialize the node.
@@ -68,7 +110,7 @@ if __name__ == '__main__':
 	# This will move the robot to a set of fixed waypoints.  You should not do this, since you don't know
 	# if you can get to all of these points without building a map first.  This is just to demonstrate how
 	# to call the function, and make the robot move as an example.
-	controller.set_waypoints(((-4, -3), (-4, 0), (5, 0)))
+	#controller.set_waypoints(((-4, -3), (-4, 0), (5, 0)))
 
 	# Once you call this function, control is given over to the controller, and the robot will start to
 	# move.  This function will never return, so any code below it in the file will not be executed.
