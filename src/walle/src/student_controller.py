@@ -2,9 +2,13 @@
 import sys
 import rospy
 import numpy as np
+from scipy import ndimage
 
 from controller import RobotController
 import actionlib
+import exploring
+import path_planning
+from slam import map_to_pixel
 
 from walle.msg import SLAMAction, SLAMGoal
 
@@ -19,6 +23,11 @@ class StudentController(RobotController):
 		super().__init__()
 		self.slam_client = actionlib.SimpleActionClient('slam_processor', SLAMAction)
 		self.slam_client.wait_for_server()
+
+		self.map_thresh = None
+		self.map_unseen = None
+		self.map_info = None
+		self.robot_position = (0, 0)
 		
 
 	def distance_update(self, distance):
@@ -40,9 +49,30 @@ class StudentController(RobotController):
 		raw_unseen = result.pmap.unseen.data
 		
 		map_thresh = np.fromiter(raw_thresh, int).reshape(-1, raw_width)
-		map_unseen = [(x, y) for x, y in np.fromiter(raw_unseen, tuple).reshape(-1, 2)]
+		map_unseen = [(x, y) for x, y in np.fromiter(raw_unseen, int).reshape(-1, 2)]
+
+		# wall_mask = (map_thresh == 0)
+		# dilation_mask = ndimage.binary_dilation(wall_mask, np.ones((10, 10), dtype=bool))
+		# wide_walls = (dilation_mask | wall_mask)
+		# map_thresh[wide_walls == 1] = 0
+		
+		self.map_thresh = map_thresh
+		self.map_unseen = map_unseen
+
+		self.find_new_goal()
 
 		rospy.loginfo(f'Got SLAM update from callback')
+
+	def find_new_goal(self):
+		map_robot_position = map_to_pixel(self.map_info, self.robot_position)
+		rospy.loginfo(f'Robot location {self.robot_position} {map_to_pixel(self.map_info, self.robot_position)}')
+		best_point = exploring.find_best_point(self.map_thresh, self.map_unseen, map_robot_position)
+		rospy.loginfo(f'Best point {best_point}')
+		path = path_planning.dijkstra(self.map_thresh, map_robot_position, best_point)
+		rospy.loginfo(f'Path {path}')
+		waypoints = exploring.find_waypoints(self.map_thresh, path)
+		rospy.loginfo(f'Waypoints {waypoints}')
+		self.set_waypoints(waypoints)
 
 
 	def map_update(self, point, map, map_data):
@@ -64,9 +94,11 @@ class StudentController(RobotController):
 		# We could also explicitly check to see if the point is None.
 		try:
 			# The (x, y) position of the robot can be retrieved like this.
-			robot_position = (point.point.x, point.point.y)
+			self.robot_position = (point.point.x, point.point.y)
 		except:
 			rospy.loginfo('No odometry information')
+
+		self.map_info = map.info
 
 		# Send the SLAM map out for processing
 		slam_goal = SLAMGoal()

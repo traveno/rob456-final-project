@@ -110,7 +110,5 @@ class StudentDriver(Driver):
 
 if __name__ == '__main__':
 	rospy.init_node('student_driver', argv=sys.argv)
-
 	driver = StudentDriver()
-
 	rospy.spin()
