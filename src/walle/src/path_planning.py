@@ -5,7 +5,7 @@ import imageio
 
 # -------------- Thresholded image True/False ---------------
 def is_wall(im, pix):
-    """ Is the pixel a wall pixel?
+    """Is the pixel a wall pixel?
     @param im - the image
     @param pix - the pixel i,j"""
     if im[pix[1], pix[0]] == 0:
@@ -14,7 +14,7 @@ def is_wall(im, pix):
 
 
 def is_unseen(im, pix):
-    """ Is the pixel one we've seen?
+    """Is the pixel one we've seen?
     @param im - the image
     @param pix - the pixel i,j"""
     if im[pix[1], pix[0]] == 128:
@@ -23,7 +23,7 @@ def is_unseen(im, pix):
 
 
 def is_free(im, pix):
-    """ Is the pixel empty?
+    """Is the pixel empty?
     @param im - the image
     @param pix - the pixel i,j"""
     if im[pix[1], pix[0]] == 255:
@@ -33,7 +33,7 @@ def is_free(im, pix):
 
 # -------------- Getting 4 or 8 neighbors ---------------
 def four_connected(pix):
-    """ Generator function for 4 neighbors
+    """Generator function for 4 neighbors
     @param im - the image
     @param pix - the i, j location to iterate around"""
     for i in [-1, 1]:
@@ -45,7 +45,7 @@ def four_connected(pix):
 
 
 def eight_connected(pix):
-    """ Generator function for 8 neighbors
+    """Generator function for 8 neighbors
     @param im - the image
     @param pix - the i, j location to iterate around"""
     for i in range(-1, 2):
@@ -57,7 +57,7 @@ def eight_connected(pix):
 
 
 def dijkstra(im, robot_loc, goal_loc):
-    """ Occupancy grid image, with robot and goal loc as pixels
+    """Occupancy grid image, with robot and goal loc as pixels
     @param im - the thresholded image - use is_free(i, j) to determine if in reachable node
     @param robot_loc - where the robot is (tuple, i,j)
     @param goal_loc - where to go to (tuple, i,j)
@@ -65,10 +65,14 @@ def dijkstra(im, robot_loc, goal_loc):
 
     # Sanity check
     if not is_free(im, robot_loc):
-        raise ValueError(f"Start location {robot_loc} is not in the free space of the map")
+        raise ValueError(
+            f"Start location {robot_loc} is not in the free space of the map"
+        )
 
     if not is_free(im, goal_loc):
-        raise ValueError(f"Goal location {goal_loc} is not in the free space of the map")
+        raise ValueError(
+            f"Goal location {goal_loc} is not in the free space of the map"
+        )
 
     # The priority queue itself is just a list, with elements of the form (weight, (i,j))
     #    - i.e., a tuple with the first element the weight/score, the second element a tuple with the pixel location
@@ -84,7 +88,11 @@ def dijkstra(im, robot_loc, goal_loc):
     visited = {}
     # Use the (i,j) tuple to index the dictionary
     #   Store the best distance, the parent, and if closed y/n
-    visited[robot_loc] = (0, None, False)   # For every other node this will be the current_node, distance
+    visited[robot_loc] = (
+        0,
+        None,
+        False,
+    )  # For every other node this will be the current_node, distance
 
     # While the list is not empty - use a break for if the node is the end node
     while priority_queue:
@@ -110,7 +118,7 @@ def dijkstra(im, robot_loc, goal_loc):
         visited[node_ij] = (visited_distance, visited_parent, True)
 
         for neighbor in eight_connected(node_ij):
-            if not is_free(im, neighbor): #skip over if pixel is full
+            if not is_free(im, neighbor):  # skip over if pixel is full
                 continue
 
             # edge weight is just the euclidean distance
@@ -121,24 +129,23 @@ def dijkstra(im, robot_loc, goal_loc):
             # Uniform cost search! Basically if we've visited a node decrease it's key- else add it to the queue
             # psuedocode here: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs
 
-            #first set edge weight
-            if node_ij[1] == neighbor[1]: #if these are the same location
+            # first set edge weight
+            if node_ij[1] == neighbor[1]:  # if these are the same location
                 edge_weight = 1
             else:
                 edge_weight = np.sqrt(2)
 
-            #calculate cost to get to next node (current node score + edge_weight)
+            # calculate cost to get to next node (current node score + edge_weight)
             cost = node_score + edge_weight
 
             if neighbor not in visited:
-                #add to priority queue and visited dictionary
+                # add to priority queue and visited dictionary
                 visited[neighbor] = (cost, node_ij, False)
                 heapq.heappush(priority_queue, (cost, neighbor))
-            elif visited[neighbor][0] > cost: #if already visited and higher cost
-                #replace existing neighbor with new tuple with cost = to lower value
+            elif visited[neighbor][0] > cost:  # if already visited and higher cost
+                # replace existing neighbor with new tuple with cost = to lower value
                 visited[neighbor] = (cost, node_ij, False)
 
-    
     # Now check that we actually found the goal node
     try_2 = None
     if not goal_loc in visited:
@@ -148,27 +155,30 @@ def dijkstra(im, robot_loc, goal_loc):
         for i, j in visited:
             dist = np.sqrt((goal_loc[0] - i) ** 2 + (goal_loc[1] - j) ** 2)
             distance.append(dist)
-        
-        #find closest distance
+
+        # find closest distance
         closest_idx = np.argmin(distance)
-        k, v = list(visited.items())[closest_idx] #get closest i,j pair out of dictionary
+        k, v = list(visited.items())[
+            closest_idx
+        ]  # get closest i,j pair out of dictionary
         print("Key:", k)
         print("Val:", v)
 
         try_2 = k
-        if(try_2 is not None):
+        if try_2 is not None:
             return dijkstra(im, robot_loc, try_2)
         else:
             raise ValueError(f"Goal {goal_loc} not reached")
-
 
     path = []
     path.append(goal_loc)
     # TODO: Build the path by starting at the goal node and working backwards
     current_node = goal_loc
-    #loop until we get back to robot location
+    # loop until we get back to robot location
     while current_node != robot_loc:
-        current_node = visited[current_node][1] #get i,j location of current in visited array
+        current_node = visited[current_node][
+            1
+        ]  # get i,j location of current in visited array
         path.append(current_node)
 
     return path
