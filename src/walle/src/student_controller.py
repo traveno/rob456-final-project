@@ -2,15 +2,13 @@
 import sys
 import rospy
 import numpy as np
-from scipy import ndimage
 
 from controller import RobotController
-import actionlib
 import exploring
 import path_planning
 from slam import map_to_pixel, pixel_to_map
 
-from walle.msg import SLAMAction, SLAMGoal
+from walle.msg import ProcessedMap
 
 
 class StudentController(RobotController):
@@ -22,8 +20,7 @@ class StudentController(RobotController):
 
     def __init__(self):
         super().__init__()
-        self.slam_client = actionlib.SimpleActionClient("slam_processor", SLAMAction)
-        self.slam_client.wait_for_server()
+        self.pmap_sub = rospy.Subscriber('map_processed', ProcessedMap, self.slam_update)
 
         self.map_thresh = None
         self.map_unseen = None
@@ -43,7 +40,10 @@ class StudentController(RobotController):
         """
         # rospy.loginfo(f'Distance: {distance}')
 
-    def slam_update(self, state, result):
+    def slam_update(self, map_msg):
+        print(map_msg)
+        return
+
         raw_width = result.pmap.width.data
         raw_thresh = result.pmap.thresh.data
         raw_unseen = result.pmap.unseen.data
@@ -88,7 +88,7 @@ class StudentController(RobotController):
                 map:		An OccupancyGrid containing the current version of the map.
                 map_data:	A MapMetaData containing the current map meta data.
         """
-        rospy.loginfo("Got a map update.")
+        rospy.loginfo(f'Received a map update {map_data}')
 
         # It's possible that the position passed to this function is None.  This try-except block will deal
         # with that.  Trying to unpack the position will fail if it's None, and this will raise an exception.
@@ -98,13 +98,6 @@ class StudentController(RobotController):
             self.robot_position = (point.point.x, point.point.y)
         except:
             rospy.loginfo("No odometry information")
-
-        self.map_info = map.info
-
-        # Send the SLAM map out for processing
-        slam_goal = SLAMGoal()
-        slam_goal.map = map
-        self.slam_client.send_goal(slam_goal, self.slam_update)
 
 
 if __name__ == "__main__":

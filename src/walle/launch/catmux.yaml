@@ -28,7 +28,7 @@ windows:
       - rqt_console
   - name: image
     commands:
-      - rosrun rqt_image_view rqt_image_view image:=/map_processed
+      - rosrun rqt_image_view rqt_image_view image:=/supervision
   - name: slam
     commands:
       - rosrun gmapping slam_gmapping __name:SLAM scan:=base_scan

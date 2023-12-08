@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 
 import rospy
-import actionlib
 import numpy as np
 from math import trunc
-from walle.msg import SLAMAction, SLAMResult, ProcessedMap
+from walle.msg import ProcessedMap
 from scipy import ndimage
 from sensor_msgs.msg import Image
-import sensor_msgs
-import path_planning, exploring
-
+import time
+from nav_msgs.msg import OccupancyGrid
 
 def map_to_pixel(map_info, location):
     x = trunc((location[0] - map_info.origin.position.x) / map_info.resolution) + 5
@@ -23,52 +21,79 @@ def pixel_to_map(map_info, location):
     return [x, y]
 
 
-class SLAMServer:
+class SLAMNode:
     def __init__(self):
-        self.server = actionlib.SimpleActionServer(
-            "slam_processor", SLAMAction, self.execute, False
-        )
-        self.server.start()
-
         # Image server
-        self.image_pub = rospy.Publisher("map_processed", Image, queue_size=1)
+        self.image_pub = rospy.Publisher('supervision', Image, queue_size=1)
 
-    def execute(self, message):
+        # Subscribe to the map and the map metadata.
+        self.map_sub = rospy.Subscriber('map', OccupancyGrid, self.execute, queue_size=10)
+
+        # Processed map server
+        self.pmap_pub = rospy.Publisher('map_processed', ProcessedMap, queue_size=1)
+
+    def execute(self, map):
         rospy.loginfo(f"Received SLAM map to process")
-        map = message.map
+        start = time.time()
 
-        map_thresh = self.process_map(map)
-        map_unseen = self.find_unseen(map_thresh)
+        # Process raw monochrome data
+        map_thresh, map_width, map_height, map_ij = self.process_map(map)
 
-        # exploring.plot_with_explore_points(map_thresh, 0.1, explore_points=map_unseen)
+        # Find good places to see
+        self.find_unseen(map_thresh)
 
+        end = time.time()
+        rospy.loginfo(f"SLAM processing took {round(end - start, 3)}s")
+
+        # Send a colored image to our viewer
+        self.annotate_image(map_thresh, map_width, map_height)
+
+        start = time.time()
         pmap = ProcessedMap()
-        pmap.thresh.data = tuple(map_thresh.flatten().astype(int))
-        pmap.unseen.data = tuple(map_unseen.flatten().astype(int))
-        pmap.width.data = map.info.width
+        pmap.map = tuple(map_thresh.flatten().astype(int))
+        pmap.offset_i = map_ij[0]
+        pmap.offset_j = map_ij[1]
 
-        response = SLAMResult()
-        response.pmap = pmap
+        self.pmap_pub.publish(pmap)
+
+        end = time.time()
+        rospy.loginfo(f"Map msg processing took {round(end - start, 3)}s")
+
+    def annotate_image(self, map, width, height):
+        # Publish a new image to rqt_image_view
+        start = time.time()
+
+        # Turn into RGB spec
+        map_rgb = np.repeat(map[:, :, np.newaxis], 3, axis=2)
+
+        # 254 - areas around unseen that we can reach
+        map_rgb = np.where(map_rgb == [254, 254, 254], [0, 0, 255], map_rgb)
 
         image = Image()
-        image.data = tuple(map_thresh.flatten().astype(int))
-        image.step = map.info.width
-        image.width = map.info.width
-        image.height = map.info.height
-        image.encoding = "mono8"
+        image.data = tuple(np.flipud(map_rgb).flatten().astype(int))
+        image.step = width * 3
+        image.width = width
+        image.height = height
+        image.encoding = "rgb8"
         image.header.stamp = rospy.Time.now()
 
+        # Send it
         self.image_pub.publish(image)
-
-        self.server.set_succeeded(response)
-        rospy.loginfo(f"SLAM map processing complete")
+        end = time.time()
+        rospy.loginfo(f"Image view msg processing took {round(end - start, 3)}s") 
 
     def process_map(self, map):
         map_2d = np.fromiter(map.data, int).reshape(-1, map.info.width)
 
-        map_ret = np.zeros((map.info.height, map.info.width), dtype=int) + 128
-        map_ret[map_2d == 100] = 0
-        map_ret[map_2d == 0] = 255
+        non_negative_indices = np.where(map_2d != -1)
+        min_row, max_row = np.min(non_negative_indices[0]), np.max(non_negative_indices[0])
+        min_col, max_col = np.min(non_negative_indices[1]), np.max(non_negative_indices[1])
+        map_width, map_height = max_col - min_col + 1, max_row - min_row + 1
+        map_trimmed = map_2d[min_row:max_row + 1, min_col:max_col + 1]
+
+        map_ret = np.zeros((map_height, map_width), dtype=int) + 128
+        map_ret[map_trimmed == 100] = 0
+        map_ret[map_trimmed == 0] = 255
 
         # Thicken the wall areas using binary dilation
         wall_mask = map_ret == 0
@@ -76,19 +101,22 @@ class SLAMServer:
         wide_walls = dilation_mask ^ wall_mask
         map_ret[wide_walls == 1] = 0
 
-        # exploring.plot_with_explore_points(map_ret, 0.1)
-
-        return map_ret
+        # map_ret = np.repeat(map_ret, 3, axis=1)
+        return map_ret, map_width, map_height, (min_row, min_col)
 
     def find_unseen(self, map):
-        # Binary erosion, quite handy
-        seen_mask = map == 255
-        erosion_mask = ndimage.binary_erosion(seen_mask, np.ones((3, 3), dtype=bool))
-        seen_border = np.flip(np.argwhere((erosion_mask ^ seen_mask) & (map == 255)))
+        # Binary dilation, quite handy
+        unseen_mask = (map == 128)
+        dilation_mask = ndimage.binary_dilation(unseen_mask, np.ones((2, 2), dtype=bool))
+        seen_border = (dilation_mask ^ unseen_mask) & (map == 255)
+
+        # Set areas we can reach but haven't seen to 254
+        map[seen_border == 1] = 254
+
         return seen_border
 
 
 if __name__ == "__main__":
     rospy.init_node("slam_processor")
-    server = SLAMServer()
+    server = SLAMNode()
     rospy.spin()

@@ -1,3 +1,3 @@
-std_msgs/Int32MultiArray thresh
-std_msgs/Int32MultiArray unseen
-std_msgs/Int32 width
+std_msgs/Int32MultiArray map
+std_msgs/Int32 offset_i
+std_msgs/Int32 offset_j

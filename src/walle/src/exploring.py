@@ -116,11 +116,11 @@ def find_waypoints(im, path):
             prev_theta = theta
             continue
 
-        if not np.isclose(theta, prev_theta, atol=0.05):
+        if not np.isclose(theta, prev_theta, atol=pi/1.75):
             waypoints.append(prev_point)
+            prev_theta = theta
 
         prev_point = point
-        prev_theta = theta
 
     if len(waypoints) == 0:
         waypoints.append(path[-1])
