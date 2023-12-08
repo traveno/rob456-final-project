@@ -1,14 +1,14 @@
 import numpy as np
 import heapq
-import imageio
-
+import rospy
+from math import sqrt
 
 # -------------- Thresholded image True/False ---------------
 def is_wall(im, pix):
     """Is the pixel a wall pixel?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 0:
+    if im[pix[0], pix[1]] in [0, 1]:
         return True
     return False
 
@@ -17,7 +17,7 @@ def is_unseen(im, pix):
     """Is the pixel one we've seen?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 128:
+    if im[pix[0], pix[1]] == 128:
         return True
     return False
 
@@ -26,7 +26,7 @@ def is_free(im, pix):
     """Is the pixel empty?
     @param im - the image
     @param pix - the pixel i,j"""
-    if im[pix[1], pix[0]] == 255:
+    if im[pix[0], pix[1]] == 255:
         return True
     return False
 
@@ -56,23 +56,25 @@ def eight_connected(pix):
             yield ret
 
 
-def dijkstra(im, robot_loc, goal_loc):
+def dijkstra(im, robot_ij, goal_ij):
     """Occupancy grid image, with robot and goal loc as pixels
     @param im - the thresholded image - use is_free(i, j) to determine if in reachable node
     @param robot_loc - where the robot is (tuple, i,j)
     @param goal_loc - where to go to (tuple, i,j)
     @returns a list of tuples"""
 
-    # Sanity check
-    if not is_free(im, robot_loc):
-        raise ValueError(
-            f"Start location {robot_loc} is not in the free space of the map"
-        )
 
-    if not is_free(im, goal_loc):
-        raise ValueError(
-            f"Goal location {goal_loc} is not in the free space of the map"
-        )
+
+    # Sanity check
+    # if not is_free(im, robot_loc):
+    #     raise ValueError(
+    #         f"Start location {robot_loc} is not in the free space of the map"
+    #     )
+
+    # if not is_free(im, goal_loc):
+    #     raise ValueError(
+    #         f"Goal location {goal_loc} is not in the free space of the map"
+    #     )
 
     # The priority queue itself is just a list, with elements of the form (weight, (i,j))
     #    - i.e., a tuple with the first element the weight/score, the second element a tuple with the pixel location
@@ -80,7 +82,7 @@ def dijkstra(im, robot_loc, goal_loc):
     # Push the start node onto the queue
     #   push takes the queue itself, then a tuple with the first element the priority value and the second
     #   being whatever data you want to keep - in this case, the robot location, which is a tuple
-    heapq.heappush(priority_queue, (0, robot_loc))
+    heapq.heappush(priority_queue, (0, robot_ij))
 
     # The power of dictionaries - we're going to use a dictionary to store every node we've visited, along
     #   with the node we came from and the current distance
@@ -88,7 +90,7 @@ def dijkstra(im, robot_loc, goal_loc):
     visited = {}
     # Use the (i,j) tuple to index the dictionary
     #   Store the best distance, the parent, and if closed y/n
-    visited[robot_loc] = (
+    visited[robot_ij] = (
         0,
         None,
         False,
@@ -109,13 +111,15 @@ def dijkstra(im, robot_loc, goal_loc):
         visited_closed_yn = visited_triplet[2]
 
         #  Step 1: Break out of the loop if node_ij is the goal node
-        if node_ij == goal_loc:
+        if node_ij == goal_ij:
             break
         #  Step 2: If this node is closed, skip it
         if visited_closed_yn:
             continue
         #  Step 3: Set the node to closed
         visited[node_ij] = (visited_distance, visited_parent, True)
+        # rospy.loginfo(f'{node_ij} {robot_loc}')
+        dist_to_robot = sqrt((node_ij[0] - robot_ij[0])**2 + (node_ij[1] - robot_ij[1])**2)
 
         for neighbor in eight_connected(node_ij):
             if not is_free(im, neighbor):  # skip over if pixel is full
@@ -148,12 +152,12 @@ def dijkstra(im, robot_loc, goal_loc):
 
     # Now check that we actually found the goal node
     try_2 = None
-    if not goal_loc in visited:
+    if not goal_ij in visited:
         # TODO: Deal with not being able to get to the goal loc
         # we basically just want to go to the closest node to the goal that we visted
         distance = []
         for i, j in visited:
-            dist = np.sqrt((goal_loc[0] - i) ** 2 + (goal_loc[1] - j) ** 2)
+            dist = np.sqrt((goal_ij[0] - i) ** 2 + (goal_ij[1] - j) ** 2)
             distance.append(dist)
 
         # find closest distance
@@ -166,19 +170,20 @@ def dijkstra(im, robot_loc, goal_loc):
 
         try_2 = k
         if try_2 is not None:
-            return dijkstra(im, robot_loc, try_2)
+            return dijkstra(im, robot_ij, try_2)
         else:
-            raise ValueError(f"Goal {goal_loc} not reached")
+            raise ValueError(f"Goal {goal_ij} not reached")
 
     path = []
-    path.append(goal_loc)
+    path.append(goal_ij)
     # TODO: Build the path by starting at the goal node and working backwards
-    current_node = goal_loc
+    current_node = goal_ij
     # loop until we get back to robot location
-    while current_node != robot_loc:
+    while current_node != robot_ij:
         current_node = visited[current_node][
             1
         ]  # get i,j location of current in visited array
         path.append(current_node)
 
+    path.reverse()
     return path

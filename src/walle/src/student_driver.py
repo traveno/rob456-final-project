@@ -32,6 +32,9 @@ class StudentDriver(Driver):
         return False
 
         # This function returns an bias of "go left" or "go right"
+        # This function returns an bias of "go left" or "go right"
+
+    # This function returns an bias of "go left" or "go right"
 
     def calc_turn_influence(self, lidar, dist_threshold, clamp):
         # First, limit lidar data that is below our distance threshold (which is 3)
@@ -95,7 +98,7 @@ class StudentDriver(Driver):
         if distance < close_distance:
             command.linear.x = 0.2
         else:
-            command.linear.x = min(0.15, 0.05 * distance)
+            command.linear.x = min(0.35, 0.25 * distance)
 
         # How close should we start considering obstacles?
         # I determined this to be 3

@@ -13,6 +13,7 @@ import tf
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
 from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker, MarkerArray
+from actionlib import SimpleGoalState
 
 import actionlib
 from walle.msg import NavTargetAction, NavTargetActionGoal
@@ -37,14 +38,6 @@ class RobotController:
 
         # Visualize the goal points.
         self.marker_pub = rospy.Publisher("goal_points", MarkerArray, queue_size=10)
-
-        # Subscribe to the map and the map metadata.
-        self.map_sub = rospy.Subscriber(
-            "map", OccupancyGrid, self._map_callback, queue_size=10
-        )
-        self.map_data_sub = rospy.Subscriber(
-            "map_metadata", MapMetaData, self._map_data_callback, queue_size=10
-        )
 
         self.odom_pub = rospy.Subscriber(
             "odom", Odometry, self._odom_callback, queue_size=1
@@ -75,7 +68,6 @@ class RobotController:
     def _odom_callback(self, odom):
         self._odom = odom
 
-    def _map_callback(self, map):
         point = PointStamped()
         point.header = self._odom.header
         point.header.stamp = rospy.Time.now()
@@ -86,10 +78,7 @@ class RobotController:
         except:
             point = None
 
-        self.map_update(point, map, self._map_data)
-
-    def _map_data_callback(self, data):
-        self._map_data = data
+        self.pose_update(point)
 
     def _marker_callback(self, _):
         if not self._waypoints:
@@ -147,7 +136,8 @@ class RobotController:
         self.distance_update(feedback.distance.data)
 
     def set_waypoints(self, points):
-        self.action_client.cancel_goal()
+        if self.action_client.simple_state is not SimpleGoalState.DONE:
+            self.action_client.cancel_goal()
 
         with self.mutex:
             self._waypoints = [RobotController._generate_point(p) for p in points]
@@ -180,6 +170,11 @@ class RobotController:
         raise NotImplemented("distance_update() not implemented")
 
     def map_update(self, point, map, map_data):
+        """This is a dummy class method that will be overwritten by the one in student_controller - change that
+        one, NOT this one"""
+        raise NotImplemented("map_update() not implemented")
+
+    def pose_update(self, point, map_data):
         """This is a dummy class method that will be overwritten by the one in student_controller - change that
         one, NOT this one"""
         raise NotImplemented("map_update() not implemented")

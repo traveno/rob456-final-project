@@ -4,13 +4,11 @@
 import rospy
 import sys
 
-from math import atan2, sqrt, tanh
+from math import sqrt
 
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist, Point
+from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import LaserScan
-from tf.transformations import euler_from_quaternion
 
 import actionlib
 import tf
@@ -19,7 +17,7 @@ from walle.msg import NavTargetAction, NavTargetResult, NavTargetFeedback
 
 
 class Driver:
-    def __init__(self, position_source, threshold=0.1):
+    def __init__(self, position_source, threshold=0.5):
         self._target_point = None
         self._threshold = threshold
 

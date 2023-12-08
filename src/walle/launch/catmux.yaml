@@ -23,9 +23,9 @@ windows:
         - sleep 1
         - roslaunch stage_osu simple_rooms.launch
     delay: 1
-  - name: logs
-    commands:
-      - rqt_console
+  # - name: logs
+  #   commands:
+  #     - rqt_console
   - name: image
     commands:
       - rosrun rqt_image_view rqt_image_view image:=/supervision
