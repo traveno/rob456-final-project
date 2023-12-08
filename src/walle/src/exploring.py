@@ -1,78 +1,8 @@
-#!/usr/bin/env python3
-
-# This assignment lets you both define a strategy for picking the next point to explore and determine how you
-#  want to chop up a full path into way points. You'll need path_planning.py as well (for calculating the paths)
-#
-# Note that there isn't a "right" answer for either of these. This is (mostly) a light-weight way to check
-#  your code for obvious problems before trying it in ROS. It's set up to make it easy to download a map and
-#  try some robot starting/ending points
-#
-# Given to you:
-#   Image handling
-#   plotting
-#   Some structure for keeping/changing waypoints and converting to/from the map to the robot's coordinate space
-#
-# Slides
-
-# The ever-present numpy
 import numpy as np
-
-# Your path planning code
 import path_planning as path_planning
-# Our priority queue
 import heapq
-
-# Using imageio to read in the image
 import imageio
 from math import atan2, sqrt, pi
-
-
-# -------------- Showing start and end and path ---------------
-def plot_with_explore_points(im_threshhold, zoom=1.0, robot_loc=None, explore_points=None, best_pt=None):
-    """Show the map plus, optionally, the robot location and points marked as ones to explore/use as end-points
-    @param im - the image of the SLAM map
-    @param im_threshhold - the image of the SLAM map
-    @param robot_loc - the location of the robot in pixel coordinates
-    @param best_pt - The best explore point (tuple, i,j)
-    @param explore_points - the proposed places to explore, as a list"""
-
-    # Putting this in here to avoid messing up ROS
-    import matplotlib.pyplot as plt
-
-    fig, axs = plt.subplots(1, 2)
-    axs[0].imshow(im_threshhold, origin='lower', cmap="gist_gray")
-    axs[0].set_title("original image")
-    axs[1].imshow(im_threshhold, origin='lower', cmap="gist_gray")
-    axs[1].set_title("threshold image")
-    """
-    # Used to double check that the is_xxx routines work correctly
-    for i in range(0, im_threshhold.shape[1]-1, 10):
-        for j in range(0, im_threshhold.shape[0]-1, 2):
-            if is_reachable(im_thresh, (i, j)):
-                axs[1].plot(i, j, '.b')
-    """
-
-    # Show original and thresholded image
-    if explore_points is not None:
-        for p in explore_points:
-            axs[1].plot(p[0], p[1], '.b', markersize=2)
-
-    for i in range(0, 2):
-        if robot_loc is not None:
-            axs[i].plot(robot_loc[0], robot_loc[1], '+r', markersize=10)
-        if best_pt is not None:
-            axs[i].plot(best_pt[0], best_pt[1], '*y', markersize=10)
-        axs[i].axis('equal')
-
-    for i in range(0, 2):
-        # Implements a zoom - set zoom to 1.0 if no zoom
-        width = im_threshhold.shape[1]
-        height = im_threshhold.shape[0]
-
-        axs[i].set_xlim(width / 2 - zoom * width / 2, width / 2 + zoom * width / 2)
-        axs[i].set_ylim(height / 2 - zoom * height / 2, height / 2 + zoom * height / 2)
-
-    plt.savefig('map.png')
 
 
 # -------------- For converting to the map and back ---------------
@@ -157,7 +87,6 @@ def find_best_point(im, possible_points, robot_loc):
     if len(possible_points) == 0: return None
     return max(possible_points, key=lambda p: sqrt((p[0] - robot_loc[0])**2 + (p[1] - robot_loc[1])**2))
 
-
 def find_waypoints(im, path):
     """ Place waypoints along the path
     @param im - the thresholded image
@@ -169,7 +98,7 @@ def find_waypoints(im, path):
     prev_theta = None
     prev_point = None
     
-    for point in path:
+    for point in reversed(path):
       if prev_point is None:
         prev_point = point
         continue
@@ -180,7 +109,7 @@ def find_waypoints(im, path):
         prev_theta = theta
         continue
       
-      if not np.isclose(theta, prev_theta, atol=0.1):
+      if not np.isclose(theta, prev_theta, atol=0.05):
         waypoints.append(prev_point)
         
       prev_point = point
@@ -190,4 +119,3 @@ def find_waypoints(im, path):
        waypoints.append(path[-1])
         
     return waypoints
-

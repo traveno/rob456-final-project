@@ -9,7 +9,8 @@
 	<!-- Start a custom rviz, and a logger so we can see the log messages we want. -->
 	<node pkg="rviz" name="rviz" type="rviz" args="-d $(find walle)/config/nav.rviz" />
 	<node pkg="rqt_console" name="rqt_console" type="rqt_console" />
-  <node pkg="rqt_graph" name="rqt_graph" type="rqt_graph" />
+  <node pkg="rqt_image_view" name="rqt_image_view" type="rqt_image_view" args="image:=/map_processed" />
+  <!-- <node pkg="rqt_graph" name="rqt_graph" type="rqt_graph" /> -->
 	<!-- Start the SLAM node. -->
 	<node pkg="gmapping" name="SLAM" type="slam_gmapping">
 		<remap from="scan" to="base_scan" />
@@ -18,4 +19,5 @@
 	<node pkg="walle" name="driver" type="student_driver.py" />
   <node pkg="walle" name="controller" type="student_controller.py" />
   <node pkg="walle" name="slam_processor" type="slam.py" />
+  
 </launch>

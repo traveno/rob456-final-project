@@ -90,7 +90,7 @@ class StudentDriver(Driver):
 		if (distance < close_distance):
 			command.linear.x = 0.2
 		else:
-			command.linear.x = min(0.3, 0.15 * distance)
+			command.linear.x = min(0.15, 0.05 * distance)
 
 		# How close should we start considering obstacles?
 		# I determined this to be 3

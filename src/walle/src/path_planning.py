@@ -1,78 +1,6 @@
-#!/usr/bin/env python3
-
-# This assignment implements Dijkstra's shortest path on a graph, finding an unvisited node in a graph,
-#   picking which one to visit, and taking a path in the map and generating waypoints along that path
-#
-# Given to you:
-#   Priority queue
-#   Image handling
-#   Eight connected neighbors
-#
-# Slides https://docs.google.com/presentation/d/1XBPw2B2Bac-LcXH5kYN4hQLLLl_AMIgoowlrmPpTinA/edit?usp=sharing
-
-# The ever-present numpy
 import numpy as np
-
-# Our priority queue
 import heapq
-
-# Using imageio to read in the image
 import imageio
-import yaml
-
-from math import atan2, pi, sqrt
-
-
-# -------------- Showing start and end and path ---------------
-def plot_with_path(im, im_threshhold, zoom=1.0, robot_loc=None, goal_loc=None, path=None):
-    """Show the map plus, optionally, the robot location and goal location and proposed path
-    @param im - the image of the SLAM map
-    @param im_threshhold - the image of the SLAM map
-    @param zoom - how much to zoom into the map (value between 0 and 1)
-    @param robot_loc - the location of the robot in pixel coordinates
-    @param goal_loc - the location of the goal in pixel coordinates
-    @param path - the proposed path in pixel coordinates"""
-
-    # Putting this in here to avoid messing up ROS
-    import matplotlib.pyplot as plt
-
-    fig, axs = plt.subplots(1, 2)
-    axs[0].imshow(im, origin='lower', cmap="gist_gray")
-    axs[0].set_title("original image")
-    axs[1].imshow(im_threshhold, origin='lower', cmap="gist_gray")
-    axs[1].set_title("threshold image")
-    """
-    # Used to double check that the is_xxx routines work correctly
-    for i in range(0, im_threshhold.shape[1]-1, 10):
-        for j in range(0, im_threshhold.shape[0]-1, 10):
-            if is_wall(im_thresh, (i, j)):
-                axs[1].plot(i, j, '.b')
-    """
-
-    # Double checking lower left corner
-    axs[1].plot(10, 5, 'xy', markersize=5)
-
-    # Show original and thresholded image
-    for i in range(0, 2):
-        if robot_loc is not None:
-            axs[i].plot(robot_loc[0], robot_loc[1], '+r', markersize=10)
-        if goal_loc is not None:
-            axs[i].plot(goal_loc[0], goal_loc[1], '*g', markersize=10)
-        if path is not None:
-            for p, q in zip(path[0:-1], path[1:]):
-                axs[i].plot([p[0], q[0]], [p[1], q[1]], '-y', markersize=2)
-                axs[i].plot(p[0], p[1], '.y', markersize=2)
-        axs[i].axis('equal')
-
-    for i in range(0, 2):
-        # Implements a zoom - set zoom to 1.0 if no zoom
-        width = im.shape[1]
-        height = im.shape[0]
-
-        axs[i].set_xlim(width / 2 - zoom * width / 2, width / 2 + zoom * width / 2)
-        axs[i].set_ylim(height / 2 - zoom * height / 2, height / 2 + zoom * height / 2)
-
-    plt.savefig('path.png')
 
 
 # -------------- Thresholded image True/False ---------------
@@ -103,29 +31,6 @@ def is_free(im, pix):
     return False
 
 
-def convert_image(im, wall_threshold, free_threshold):
-    """ Convert the image to a thresholded image with not seen pixels marked
-    @param im - WXHX ?? image (depends on input)
-    @param wall_threshold - number between 0 and 1 to indicate wall
-    @param free_threshold - number between 0 and 1 to indicate free space
-    @return an image of the same WXH but with 0 (free) 255 (wall) 128 (unseen)"""
-
-    # Assume all is unseen
-    im_ret = np.zeros((im.shape[0], im.shape[1]), dtype='uint8') + 128
-
-    im_avg = im
-    if len(im.shape) == 3:
-        # RGB image - convert to gray scale
-        im_avg = np.mean(im, axis=2)
-    # Force into 0,1
-    im_avg = im_avg / np.max(im_avg)
-    # threshold
-    #   in our example image, black is walls, white is free
-    im_ret[im_avg < wall_threshold] = 0
-    im_ret[im_avg > free_threshold] = 255
-    return im_ret
-
-
 # -------------- Getting 4 or 8 neighbors ---------------
 def four_connected(pix):
     """ Generator function for 4 neighbors
@@ -150,20 +55,8 @@ def eight_connected(pix):
             ret = pix[0] + i, pix[1] + j
             yield ret
 
-def near_connected(pix):
-    """ Generator function for 8 neighbors
-    @param im - the image
-    @param pix - the i, j location to iterate around"""
-    for i in range(-2, 3):
-        for j in range(-2, 3):
-            if i == 0 and j == 0:
-                pass
-            ret = pix[0] + i, pix[1] + j
-            yield ret
 
 def dijkstra(im, robot_loc, goal_loc):
-    print(f'Running dijkstra\'s with robot loc {robot_loc} and goal_loc {goal_loc}')
-    
     """ Occupancy grid image, with robot and goal loc as pixels
     @param im - the thresholded image - use is_free(i, j) to determine if in reachable node
     @param robot_loc - where the robot is (tuple, i,j)
@@ -171,11 +64,11 @@ def dijkstra(im, robot_loc, goal_loc):
     @returns a list of tuples"""
 
     # Sanity check
-    # if not is_free(im, robot_loc):
-    #     raise ValueError(f"Start location {robot_loc} is not in the free space of the map")
+    if not is_free(im, robot_loc):
+        raise ValueError(f"Start location {robot_loc} is not in the free space of the map")
 
-    # if not is_free(im, goal_loc):
-    #     raise ValueError(f"Goal location {goal_loc} is not in the free space of the map")
+    if not is_free(im, goal_loc):
+        raise ValueError(f"Goal location {goal_loc} is not in the free space of the map")
 
     # The priority queue itself is just a list, with elements of the form (weight, (i,j))
     #    - i.e., a tuple with the first element the weight/score, the second element a tuple with the pixel location
@@ -183,7 +76,7 @@ def dijkstra(im, robot_loc, goal_loc):
     # Push the start node onto the queue
     #   push takes the queue itself, then a tuple with the first element the priority value and the second
     #   being whatever data you want to keep - in this case, the robot location, which is a tuple
-    heapq.heappush(priority_queue, (sqrt((robot_loc[0] - goal_loc[0])**2 + (robot_loc[1] - goal_loc[1])**2), robot_loc))
+    heapq.heappush(priority_queue, (0, robot_loc))
 
     # The power of dictionaries - we're going to use a dictionary to store every node we've visited, along
     #   with the node we came from and the current distance
@@ -191,7 +84,7 @@ def dijkstra(im, robot_loc, goal_loc):
     visited = {}
     # Use the (i,j) tuple to index the dictionary
     #   Store the best distance, the parent, and if closed y/n
-    visited[robot_loc] = (sqrt((robot_loc[0] - goal_loc[0])**2 + (robot_loc[1] - goal_loc[1])**2), None, False)   # For every other node this will be the current_node, distance
+    visited[robot_loc] = (0, None, False)   # For every other node this will be the current_node, distance
 
     # While the list is not empty - use a break for if the node is the end node
     while priority_queue:
@@ -207,89 +100,75 @@ def dijkstra(im, robot_loc, goal_loc):
         visited_parent = visited_triplet[1]
         visited_closed_yn = visited_triplet[2]
 
-        # TODO
         #  Step 1: Break out of the loop if node_ij is the goal node
-        #  Step 2: If this node is closed, skip it
-        #  Step 3: Set the node to closed
-        #    Now do the instructions from the slide (the actual algorithm)
-        #  Lec 8_1: Planning, at the end
-        #  https://docs.google.com/presentation/d/1pt8AcSKS2TbKpTAVV190pRHgS_M38ldtHQHIltcYH6Y/edit#slide=id.g18d0c3a1e7d_0_0
-
-        # Step 1, if node is the goal, stop
         if node_ij == goal_loc:
             break
-        
-        # Step 2, if node is closed, skip
+        #  Step 2: If this node is closed, skip it
         if visited_closed_yn:
             continue
-        
-        # Step 3, set node to closed
+        #  Step 3: Set the node to closed
         visited[node_ij] = (visited_distance, visited_parent, True)
 
-        # Explore eight surrounding neighbors
-        for neighbor_ij in eight_connected(node_ij):
-            if not is_free(im, neighbor_ij):
+        for neighbor in eight_connected(node_ij):
+            if not is_free(im, neighbor): #skip over if pixel is full
                 continue
-            
-            # Calculate the neighbors distance
-            neighbor_distance = visited_distance + np.sqrt(np.abs(neighbor_ij[0] - node_ij[0]) + np.abs(neighbor_ij[1] - node_ij[1]))
 
-            # If we haven't visited this neighbor, or we've found a shorter path, do an update
-            if (neighbor_ij not in visited) or (neighbor_distance < visited[neighbor_ij][0]):
-                # Update distance and parent in visited for this neighbor
-                visited[neighbor_ij] = (neighbor_distance, node_ij, False)
+            # edge weight is just the euclidean distance
+            # temp_distance is just current node score + euclidean distance unless there is a wall in the way
+            # set all distances to 1
+            # if we were doing something more complicated edge_weight would actually be the dist between current i,j and neighbor i,j
+            # gonna actually use a special flavor of dijkstra's here instead of A*
+            # Uniform cost search! Basically if we've visited a node decrease it's key- else add it to the queue
+            # psuedocode here: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs
 
-                # Push the neighbor onto the priority queue
-                heapq.heappush(priority_queue, (neighbor_distance, neighbor_ij))
+            #first set edge weight
+            if node_ij[1] == neighbor[1]: #if these are the same location
+                edge_weight = 1
+            else:
+                edge_weight = np.sqrt(2)
 
+            #calculate cost to get to next node (current node score + edge_weight)
+            cost = node_score + edge_weight
+
+            if neighbor not in visited:
+                #add to priority queue and visited dictionary
+                visited[neighbor] = (cost, node_ij, False)
+                heapq.heappush(priority_queue, (cost, neighbor))
+            elif visited[neighbor][0] > cost: #if already visited and higher cost
+                #replace existing neighbor with new tuple with cost = to lower value
+                visited[neighbor] = (cost, node_ij, False)
+
+    
     # Now check that we actually found the goal node
-    try_2 = goal_loc
+    try_2 = None
     if not goal_loc in visited:
         # TODO: Deal with not being able to get to the goal loc
-        # BEGIN SOLULTION
-        best = 1e30
-        for k, v in visited.items():
-            if v[0] < best:
-                best = v[0]
-                try_2 = k
-        return dijkstra(im, robot_loc, try_2)
-        raise ValueError(f"Goal {goal_loc} not reached")
-        return []
+        # we basically just want to go to the closest node to the goal that we visted
+        distance = []
+        for i, j in visited:
+            dist = np.sqrt((goal_loc[0] - i) ** 2 + (goal_loc[1] - j) ** 2)
+            distance.append(dist)
+        
+        #find closest distance
+        closest_idx = np.argmin(distance)
+        k, v = list(visited.items())[closest_idx] #get closest i,j pair out of dictionary
+        print("Key:", k)
+        print("Val:", v)
+
+        try_2 = k
+        if(try_2 is not None):
+            return dijkstra(im, robot_loc, try_2)
+        else:
+            raise ValueError(f"Goal {goal_loc} not reached")
+
 
     path = []
     path.append(goal_loc)
     # TODO: Build the path by starting at the goal node and working backwards
     current_node = goal_loc
-    while current_node is not None:
-        path.insert(0, current_node)
-        # Get the parent node and set current
-        current_node = visited[current_node][1]
-
+    #loop until we get back to robot location
+    while current_node != robot_loc:
+        current_node = visited[current_node][1] #get i,j location of current in visited array
+        path.append(current_node)
 
     return path
-
-
-def open_image(im_name):
-    """ A helper function to open up the image and the yaml file and threshold
-    @param im_name - name of image in Data directory
-    @returns image anbd thresholded image"""
-
-    # Needed for reading in map info
-    from os import open
-
-    im = imageio.imread("Data/" + im_name)
-
-    wall_threshold = 0.7
-    free_threshold = 0.9
-    try:
-        yaml_name = "Data/" + im_name[0:-3] + "yaml"
-        with open(yaml_name, "r") as f:
-            dict = yaml.load_all(f)
-            wall_threshold = dict["occupied_thresh"]
-            free_threshold = dict["free_thresh"]
-    except:
-        pass
-
-    im_thresh = convert_image(im, wall_threshold, free_threshold)
-    return im, im_thresh
-

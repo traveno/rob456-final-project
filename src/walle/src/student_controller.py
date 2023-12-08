@@ -8,7 +8,7 @@ from controller import RobotController
 import actionlib
 import exploring
 import path_planning
-from slam import map_to_pixel
+from slam import map_to_pixel, pixel_to_map
 
 from walle.msg import SLAMAction, SLAMGoal
 
@@ -51,11 +51,6 @@ class StudentController(RobotController):
 		map_thresh = np.fromiter(raw_thresh, int).reshape(-1, raw_width)
 		map_unseen = [(x, y) for x, y in np.fromiter(raw_unseen, int).reshape(-1, 2)]
 
-		# wall_mask = (map_thresh == 0)
-		# dilation_mask = ndimage.binary_dilation(wall_mask, np.ones((10, 10), dtype=bool))
-		# wide_walls = (dilation_mask | wall_mask)
-		# map_thresh[wide_walls == 1] = 0
-		
 		self.map_thresh = map_thresh
 		self.map_unseen = map_unseen
 
@@ -69,8 +64,8 @@ class StudentController(RobotController):
 		best_point = exploring.find_best_point(self.map_thresh, self.map_unseen, map_robot_position)
 		rospy.loginfo(f'Best point {best_point}')
 		path = path_planning.dijkstra(self.map_thresh, map_robot_position, best_point)
-		rospy.loginfo(f'Path {path}')
-		waypoints = exploring.find_waypoints(self.map_thresh, path)
+		# rospy.loginfo(f'Path {path}')
+		waypoints = [pixel_to_map(self.map_info, (x, y)) for x, y in exploring.find_waypoints(self.map_thresh, path)]
 		rospy.loginfo(f'Waypoints {waypoints}')
 		self.set_waypoints(waypoints)
 
