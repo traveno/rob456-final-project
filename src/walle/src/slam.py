@@ -10,12 +10,10 @@ import time
 from nav_msgs.msg import OccupancyGrid
 from walle.msg import Path
 
-
 def map_to_pixel(map_info, offset_ij, location_ij):
     j = trunc((location_ij[1] - map_info.origin.position.x) / map_info.resolution) - offset_ij[1]
     i = trunc((location_ij[0] - map_info.origin.position.y) / map_info.resolution) - offset_ij[0]
     return (i, j)
-
 
 def pixel_to_map(map_info, offset_ij, location_ij):
     j = (location_ij[1] + offset_ij[1]) * map_info.resolution + map_info.origin.position.x
@@ -44,7 +42,7 @@ class SLAMNode:
         # Process raw monochrome data
         map_thresh, map_width, map_height, offset_ij = self.process_map(map)
 
-        # Find good places to see
+        # Find good places to check out ya know, explore the world
         self.find_unseen(map_thresh)
 
         rospy.loginfo(f'Trimmed size: {map_width}px width, {map_height}px height')

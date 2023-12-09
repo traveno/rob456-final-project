@@ -64,11 +64,11 @@ class StudentController(RobotController):
         goal_ij = exploring.find_best_point(self.pmap, np.argwhere(self.pmap == 254), robot_ij)
         rospy.loginfo(f"Best point {goal_ij}")
 
-        # Make a path to the best poind
+        # Make a path to the best point
         path = path_planning.dijkstra(self.pmap, robot_ij, goal_ij)
         rospy.loginfo(f"Path length {len(path)}")
 
-        # Send the path over to the SLAM map annotator (for our image view)
+        # Send the path over to the SLAM map annotator (for our image view, doesn't affect robot)
         path_sv = Path()
         path_sv.path = list(sum(path, ()))
         self.path_pub.publish(path_sv)
