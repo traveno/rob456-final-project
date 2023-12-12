@@ -21,6 +21,35 @@ class StudentDriver(Driver):
 		# Set the threshold to a reasonable number
 		self._threshold = threshold
 
+	def detect_corners(lidar_data):
+		'''
+		This function was created to detect a corner from the LiDAR data. It is supplemental to the close_enough function.
+
+		The main idea for the function is to check if the dot product between two consecutive vectors is close to zero. 
+		This would indicate that the vectors are perpendicular to each other, which would indicate a corner.
+
+		parameters: lidar data = array of (x,y) coordinates of the lidar points
+		'''
+
+		corners = []
+		for i in range(1, len(lidar_data) - 1):
+			# Create vectors from consecutive lidar points
+			vector1 = np.array(lidar_data[i]) - np.array(lidar_data[i - 1])
+			vector2 = np.array(lidar_data[i + 1]) - np.array(lidar_data[i])
+
+			# Normalize the vectors
+			vector1_norm = vector1 / np.linalg.norm(vector1)
+			vector2_norm = vector2 / np.linalg.norm(vector2)
+
+			# Calculate dot product
+			dot_product = np.dot(vector1_norm, vector2_norm)
+
+			# Check if dot product is close to zero
+			if np.isclose(dot_product, 0, atol=1e-2):
+				corners.append(lidar_data[i])
+
+		return (corners != [])
+
 	def close_enough_to_waypoint(self, distance, target, lidar):
 		'''
 		This function is called periodically if there is a waypoint set. This function now includes
@@ -34,15 +63,22 @@ class StudentDriver(Driver):
 		'''
 		safe_distance = 0.5 # 0.5 meters
 
-		# IDEA: 
-		# Need to do: abandon all waypoints (when?)
+		ranges = np.array(lidar.ranges)
+
+		# create an array of (x,y) coordinates of the lidar points
+		thetas = np.linspace(lidar.angle_min, lidar.angle_max, len(lidar.ranges))
+		x_values = ranges * np.cos(thetas)
+		y_values = ranges * np.sin(thetas)
+		lidar_points = np.column_stack((x_values, y_values))
+
+		# check to see if robot is in a corner
+		if self.detect_corners(lidar_points):  # corner threshold = sensitivity
+			# self.abandon_waypoints() # This should call to TC's generate new waypoints logic 
+			return False
 
 		# Check if within the simple distance threshold.
 		if distance < self._threshold:
 			# get the closest distance to the front of the robot
-			thetas = np.linspace(lidar.angle_min, lidar.angle_max, len(lidar.ranges))
-			ranges = np.array(lidar.ranges)
-			y_values = ranges * np.sin(thetas)
 			front_indices = np.where(np.abs(y_values) < 0.22) # robot is 0.19 (half), increased to .22 to provide a moe for the robot
 			front_ranges = ranges[front_indices]
 
