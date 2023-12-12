@@ -10,31 +10,82 @@ from math import atan2, pi, sqrt
 
 
 class StudentDriver(Driver):
-    """
-    This class implements the logic to move the robot to a specific place in the world.  All of the
-    interesting functionality is hidden in the parent class.
-    """
+	'''
+	This class implements the logic to move the robot to a specific place in the world.  All of the
+	interesting functionality is hidden in the parent class.
+	'''
+	def __init__(self, threshold=0.1):
+		super().__init__('odom')
+		# Set the threshold to a reasonable number
+		self._threshold = threshold
 
-    def __init__(self, threshold=0.1):
-        super().__init__("odom")
-        # Set the threshold to a reasonable number
-        self._threshold = threshold
+	def detect_corners(lidar_data):
+		'''
+		This function was created to detect a corner from the LiDAR data. It is supplemental to the close_enough function.
 
-    def close_enough_to_waypoint(self, distance, target, lidar):
-        """
-        This function is called perioidically if there is a waypoint set.  This is where you should put any code that
-        has a smarter stopping criteria then just checking the distance. See get_twist for the parameters; distance
-        is the current distance to the target.
-        """
-        # Default behavior.
-        if distance < self._threshold:
-            return True
-        return False
+		The main idea for the function is to check if the dot product between two consecutive vectors is close to zero. 
+		This would indicate that the vectors are perpendicular to each other, which would indicate a corner.
 
-        # This function returns an bias of "go left" or "go right"
-        # This function returns an bias of "go left" or "go right"
+		parameters: lidar data = array of (x,y) coordinates of the lidar points
+		'''
 
-    # This function returns an bias of "go left" or "go right"
+		corners = []
+		for i in range(1, len(lidar_data) - 1):
+			# Create vectors from consecutive lidar points
+			vector1 = np.array(lidar_data[i]) - np.array(lidar_data[i - 1])
+			vector2 = np.array(lidar_data[i + 1]) - np.array(lidar_data[i])
+
+			# Normalize the vectors
+			vector1_norm = vector1 / np.linalg.norm(vector1)
+			vector2_norm = vector2 / np.linalg.norm(vector2)
+
+			# Calculate dot product
+			dot_product = np.dot(vector1_norm, vector2_norm)
+
+			# Check if dot product is close to zero
+			if np.isclose(dot_product, 0, atol=1e-2):
+				corners.append(lidar_data[i])
+
+		return (corners != [])
+
+	def close_enough_to_waypoint(self, distance, target, lidar):
+		'''
+		This function is called periodically if there is a waypoint set. This function now includes
+		LiDAR data analysis to make smarter decisions about stopping criteria, taking into account
+		the proximity of obstacles in addition to the distance to the target waypoint.
+
+		Parameters:
+		- distance: Current distance to the target waypoint.
+		- target: Target waypoint coordinates.
+		- lidar: LiDAR data representing the surrounding environment.
+		'''
+		safe_distance = 0.5 # 0.5 meters
+
+		ranges = np.array(lidar.ranges)
+
+		# create an array of (x,y) coordinates of the lidar points
+		thetas = np.linspace(lidar.angle_min, lidar.angle_max, len(lidar.ranges))
+		x_values = ranges * np.cos(thetas)
+		y_values = ranges * np.sin(thetas)
+		lidar_points = np.column_stack((x_values, y_values))
+
+		# check to see if robot is in a corner
+		if self.detect_corners(lidar_points):  # corner threshold = sensitivity
+			# self.abandon_waypoints() # This should call to TC's generate new waypoints logic 
+			return False
+
+		# Check if within the simple distance threshold.
+		if distance < self._threshold:
+			# get the closest distance to the front of the robot
+			front_indices = np.where(np.abs(y_values) < 0.22) # robot is 0.19 (half), increased to .22 to provide a moe for the robot
+			front_ranges = ranges[front_indices]
+
+			shortest = np.min(front_ranges)
+
+			# Check if there are no obstacles within the safe distance.
+			if shortest >= (safe_distance + 0.19): 
+				return True
+		return False
 
     def calc_turn_influence(self, lidar, dist_threshold, clamp):
         # First, limit lidar data that is below our distance threshold (which is 3)
