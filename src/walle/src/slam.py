@@ -39,7 +39,8 @@ class SLAMNode:
         self.old_path_points = []
 
     def execute(self, map):
-        rospy.loginfo(f"----BEGIN PROCESSING----\nReceived SLAM map to process")
+        rospy.loginfo(f'----BEGIN PROCESSING----')
+        rospy.loginfo(f"Received SLAM map to process")
         start = time.time()
 
         # Process raw monochrome data
@@ -70,7 +71,8 @@ class SLAMNode:
         self.pmap_pub.publish(pmap)
 
         end = time.time()
-        rospy.loginfo(f"Map msg processing took {round(end - start, 3)}s\n-----END PROCESSING-----")
+        rospy.loginfo(f"Map msg processing took {round(end - start, 3)}s")
+        rospy.loginfo(f'-----END PROCESSING-----')
 
     def path_update(self, path_msg: Path):
         new_path_points = np.fromiter(path_msg.path, int).reshape(-1, 2)
