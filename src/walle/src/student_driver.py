@@ -14,7 +14,7 @@ class StudentDriver(Driver):
 	This class implements the logic to move the robot to a specific place in the world.  All of the
 	interesting functionality is hidden in the parent class.
 	'''
-	def __init__(self, threshold=0.3):
+	def __init__(self, threshold=0.5):
 		super().__init__('odom')
 		# Set the threshold to a reasonable number
 		self._threshold = threshold
@@ -70,9 +70,9 @@ class StudentDriver(Driver):
 		lidar_points = np.column_stack((x_values, y_values))
 
 		# check to see if robot is in a corner
-		if self.detect_corners(lidar_points):  # corner threshold = sensitivity
-			# self.abandon_waypoints() # This should call to TC's generate new waypoints logic 
-			return False
+		# if self.detect_corners(lidar_points):  # corner threshold = sensitivity
+		# 	# self.abandon_waypoints() # This should call to TC's generate new waypoints logic 
+		# 	return False
 
 		# Check if within the simple distance threshold.
 		if distance < self._threshold:

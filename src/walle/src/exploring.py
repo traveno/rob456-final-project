@@ -21,8 +21,8 @@ import numpy as np
 import path_planning as path_planning
 # Our priority queue
 import heapq
-
-
+from math import pi
+from skimage.draw import line as skimage_line
 
 # -------------- Showing start and end and path ---------------
 def plot_with_explore_points(im_threshhold, zoom=1.0, robot_loc=None, explore_points=None, best_pt=None):
@@ -148,13 +148,7 @@ def find_best_point(im, possible_points, robot_loc):
 
     # Sort the list based on priorities
     # Sort based on distance first, then on the number of unseen neighbors
-    priorities = sorted(
-    possible_points,
-    key=lambda point: (
-        -dist(point, robot_loc),
-        -sum(1 for adj in path_planning.eight_connected(point) if path_planning.is_unseen(im, adj))
-        )
-    )
+    priorities = sorted(possible_points, key=lambda point: (-dist(point, robot_loc), -sum(1 for adj in path_planning.eight_connected(point) if path_planning.is_unseen(im, adj))))
 
     # Select the point with the highest priority
     best_point = priorities[0]
@@ -169,7 +163,7 @@ def find_best_point(im, possible_points, robot_loc):
     return (best_point[0], best_point[1])
 
 
-def find_waypoints(im, path, roboy_ij):
+def find_waypoints(im, path, robot_ij):
     """ Place waypoints along the path
     @param im - the thresholded image
     @param path - the initial path
@@ -178,9 +172,11 @@ def find_waypoints(im, path, roboy_ij):
     waypoints = []
     if len(path) <= 2:
         return path
-    waypoints.append(path[0]) 
+    # waypoints.append(path[0]) 
     wall_side = list()
     wall_side.append('right')
+    
+    last_waypoint = path[0]
 
     for i in range(1, len(path)-1):
         adj_nodes = path_planning.four_connected(path[i])
@@ -203,24 +199,39 @@ def find_waypoints(im, path, roboy_ij):
         
             
     for i in range(1, len(path)-1): # iterate through the path
+        if dist(robot_ij, path[i]) < 25:
+            continue
+        
+        inbetween = bresenham_line(last_waypoint, path[i])
+        obstacles = im[inbetween[:, 0], inbetween[:, 1]] == 1
+        
         x1, y1 = path[i-1]
         x2, y2 = path[i]
         x3, y3 = path[i+1]
         	
-        if x2 - x1 != 0:  
+        if (x2 - x1) != 0:
             slope1 = (y2-y1)/(x2-x1) # previous slope
         else: # can't /0
-            slope1 = float('inf') if y2 - y1 > 0 else float('-inf')
+            slope1 = float('inf') if (y2 - y1) > 0 else float('-inf')
 
-        if x3 - x2 != 0:  
+        if (x3 - x2) != 0:
             slope2 = (y3-y2)/(x3-x2) # next slope
         else: # can't /0
-            slope2 = float('inf') if y3 - y2 > 0 else float('-inf')
+            slope2 = float('inf') if (y3 - y2) > 0 else float('-inf')
+            
+        if slope1 is np.inf or slope1 is -np.inf or slope2 is np.inf or slope2 is -np.inf:
+            continue
 
-        if slope1 != slope2 and im[x2, y2] != 1: 
+        if (not np.isclose(slope1, slope2, atol=pi/2)) or (True in obstacles) or (dist(last_waypoint, path[i]) > 25): 
             waypoints.append(adjust(path[i], wall_side[i])) # waypoint at slope change
+            last_waypoint = waypoints[-1]
     waypoints.append(path[-1]) # final destination
     return waypoints
+
+# Bresenham's line algorithm
+def bresenham_line(start, end):
+    rr, cc = skimage_line(start[0], start[1], end[0], end[1])
+    return np.column_stack((rr, cc))
 
 def adjust(point, wall_side):
     x, y = point
