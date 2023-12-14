@@ -1,0 +1,5 @@
+nav_msgs/OccupancyGrid map
+---
+walle/ProcessedMap pmap
+---
+std_msgs/Float32 progress

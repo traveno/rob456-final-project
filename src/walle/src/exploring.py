@@ -1,24 +1,6 @@
-#!/usr/bin/env python3
-
-# This assignment lets you both define a strategy for picking the next point to explore and determine how you
-#  want to chop up a full path into way points. You'll need path_planning.py as well (for calculating the paths)
-#
-# Note that there isn't a "right" answer for either of these. This is (mostly) a light-weight way to check
-#  your code for obvious problems before trying it in ROS. It's set up to make it easy to download a map and
-#  try some robot starting/ending points
-#
-# Given to you:
-#   Image handling
-#   plotting
-#   Some structure for keeping/changing waypoints and converting to/from the map to the robot's coordinate space
-#
-# Slides
-
-# The ever-present numpy
 import numpy as np
-
-# Your path planning code
 import path_planning as path_planning
+<<<<<<< HEAD
 # Our priority queue
 import heapq
 
@@ -141,13 +123,19 @@ def find_all_possible_goals(im):
     return possible
 
 
+=======
+from scipy.signal import correlate2d
+from math import atan2, sqrt, pi
+from skimage.draw import line as skimage_line
+>>>>>>> main
 
-def find_best_point(im, possible_points, robot_loc):
-    """ Pick one of the unseen points to go to
+def find_best_point(pmap, possible_points, robot_ij):
+    """Pick one of the unseen points to go to
     @param im - thresholded image
     @param possible_points - possible points to chose from
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
+<<<<<<< HEAD
     #starting with the quick and dirtiest way of doing this- let's call the "best" point the point closest to the robot
     distances = []
     for i in possible_points:
@@ -159,13 +147,40 @@ def find_best_point(im, possible_points, robot_loc):
     closest_idx = np.argmin(distances)
     best_ij = possible_points[closest_idx]
     return best_ij
+=======
 
-def find_waypoints(im, path):
-    """ Place waypoints along the path
+    if len(possible_points) == 0:
+        return None
+>>>>>>> main
+
+    filtered_map = (pmap == 254)
+    filtered_map = np.where(filtered_map == 1, 254, 0)
+
+    mask = np.full((25, 25), 254)
+
+    # Find best cross correlation
+    correlation = correlate2d(filtered_map, mask, mode='valid')
+
+    # Find the indices of the maximum correlation
+    max_corr_index = np.unravel_index(np.argmax(correlation), correlation.shape)
+    
+    furthest = min(
+        possible_points,
+        # Desire points closest to the max correlated point, also desire points that are further away from the robot
+        key=lambda p: sqrt((p[0] - max_corr_index[0]) ** 2 + (p[1] - max_corr_index[1]) ** 2) +
+                      np.log(1 + sqrt((p[0] - robot_ij[0]) ** 2 + (p[1] - robot_ij[1]) ** 2)) / 4,
+    )
+
+    return (furthest[0], furthest[1])
+
+
+def find_waypoints(pmap, path, robot_ij):
+    """Place waypoints along the path
     @param im - the thresholded image
     @param path - the initial path
     @ return - a new path"""
 
+<<<<<<< HEAD
     #naive sample approach (just to see output)
     #path starts at endpoint and loops back to robot's location
     cp_path = path #copy path to new variable
@@ -193,22 +208,29 @@ def find_waypoints(im, path):
 if __name__ == '__main__':
     # Doing this here because it is a different yaml than JN
     import yaml_1 as yaml
+=======
+    waypoints = []
+>>>>>>> main
 
-    im, im_thresh = path_planning.open_image("map.pgm")
+    prev_point = robot_ij
 
-    robot_start_loc = (1940, 1953)
+    for i in range(0, len(path)):
+        inbetween = bresenham_line(prev_point, path[i])
+        obstacles = pmap[inbetween[:, 0], inbetween[:, 1]] == 1
 
-    all_unseen = find_all_possible_goals(im_thresh)
-    best_unseen = find_best_point(im_thresh, all_unseen, robot_loc=robot_start_loc)
+        if True in obstacles or dist(path[i], prev_point) > 25:
+            waypoints.append(prev_point)
+            prev_point = path[i - 1]
 
-    plot_with_explore_points(im_thresh, zoom=0.1, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=best_unseen)
+    if path[-1] not in waypoints:
+        waypoints.append(path[-1])
 
-    path = path_planning.dijkstra(im_thresh, robot_start_loc, best_unseen)
-    waypoints = find_waypoints(im_thresh, path)
-    path_planning.plot_with_path(im, im_thresh, zoom=0.1, robot_loc=robot_start_loc, goal_loc=best_unseen, path=waypoints)
+    return waypoints
 
-    # Depending on if your mac, windows, linux, and if interactive is true, you may need to call this to get the plt
-    # windows to show
-    # plt.show()
+def dist(start, end):
+    return sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
 
-    print("Done")
+# Bresenham's line algorithm
+def bresenham_line(start, end):
+    rr, cc = skimage_line(start[0], start[1], end[0], end[1])
+    return np.column_stack((rr, cc))
