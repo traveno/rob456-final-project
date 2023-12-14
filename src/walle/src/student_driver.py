@@ -19,7 +19,7 @@ class StudentDriver(Driver):
 		# Set the threshold to a reasonable number
 		self._threshold = threshold
 
-	def detect_corners(lidar_data):
+	def detect_corners(self, lidar_data):
 		'''
 		This function was created to detect a corner from the LiDAR data. It is supplemental to the close_enough function.
 
@@ -117,6 +117,7 @@ class StudentDriver(Driver):
 		return max(min(clamp, influence), -clamp)
 
 	def get_twist(self, target, lidar):
+		rospy.loginfo(f'I am calculating a new twist!')
 		"""
 		This function is called whenever there a current target is set and there is a lidar data
 		available.  This is where you should put your code for moving the robot.  The target point
