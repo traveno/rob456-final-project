@@ -111,25 +111,13 @@ def dijkstra(im, robot_ij, goal_ij):
         visited_closed_yn = visited_triplet[2]
 
         #  Step 1: Break out of the loop if node_ij is the goal node
-<<<<<<< HEAD
-        if node_ij == goal_loc:
-=======
         if node_ij == goal_ij:
->>>>>>> main
             break
         #  Step 2: If this node is closed, skip it
         if visited_closed_yn:
             continue
         #  Step 3: Set the node to closed
         visited[node_ij] = (visited_distance, visited_parent, True)
-<<<<<<< HEAD
-        #    Now do the instructions from the slide (the actual algorithm)
-        #  Lec 8_1: Planning, at the end
-        #  https://docs.google.com/presentation/d/1pt8AcSKS2TbKpTAVV190pRHgS_M38ldtHQHIltcYH6Y/edit#slide=id.g18d0c3a1e7d_0_0
-        for neighbor in eight_connected(node_ij):
-            if not is_free(im, neighbor): #skip over if pixel is full
-                continue
-=======
         # rospy.loginfo(f'{node_ij} {robot_loc}')
         dist_to_robot = sqrt((node_ij[0] - robot_ij[0])**2 + (node_ij[1] - robot_ij[1])**2)
 
@@ -161,7 +149,6 @@ def dijkstra(im, robot_ij, goal_ij):
             elif visited[neighbor][0] > cost:  # if already visited and higher cost
                 # replace existing neighbor with new tuple with cost = to lower value
                 visited[neighbor] = (cost, node_ij, False)
->>>>>>> main
 
             # edge weight is just the euclidean distance
             # temp_distance is just current node score + euclidean distance unless there is a wall in the way
@@ -191,23 +178,11 @@ def dijkstra(im, robot_ij, goal_ij):
     
     # Now check that we actually found the goal node
     try_2 = None
-<<<<<<< HEAD
-    if not goal_loc in visited:
-=======
     if not goal_ij in visited:
->>>>>>> main
         # TODO: Deal with not being able to get to the goal loc
         # we basically just want to go to the closest node to the goal that we visted
         distance = []
         for i, j in visited:
-<<<<<<< HEAD
-            dist = np.sqrt((goal_loc[0] - i) ** 2 + (goal_loc[1] - j) ** 2)
-            distance.append(dist)
-        
-        #find closest distance
-        closest_idx = np.argmin(distance)
-        k, v = list(visited.items())[closest_idx] #get closest i,j pair out of dictionary
-=======
             dist = np.sqrt((goal_ij[0] - i) ** 2 + (goal_ij[1] - j) ** 2)
             distance.append(dist)
 
@@ -216,35 +191,18 @@ def dijkstra(im, robot_ij, goal_ij):
         k, v = list(visited.items())[
             closest_idx
         ]  # get closest i,j pair out of dictionary
->>>>>>> main
         print("Key:", k)
         print("Val:", v)
 
         try_2 = k
-<<<<<<< HEAD
-        if(try_2 is not None):
-            return dijkstra(im, robot_loc, try_2)
-        else:
-            raise ValueError(f"Goal {goal_loc} not reached")
-
-=======
         if try_2 is not None:
             return dijkstra(im, robot_ij, try_2)
         else:
             raise ValueError(f"Goal {goal_ij} not reached")
->>>>>>> main
 
     path = []
     path.append(goal_ij)
     # TODO: Build the path by starting at the goal node and working backwards
-<<<<<<< HEAD
-    current_node = goal_loc
-    #loop until we get back to robot location
-    while current_node != robot_loc:
-        current_node = visited[current_node][1] #get i,j location of current in visited array
-        path.append(current_node)
-
-=======
     current_node = goal_ij
     # loop until we get back to robot location
     while current_node != robot_ij:
@@ -254,5 +212,4 @@ def dijkstra(im, robot_ij, goal_ij):
         path.append(current_node)
 
     path.reverse()
->>>>>>> main
     return path
