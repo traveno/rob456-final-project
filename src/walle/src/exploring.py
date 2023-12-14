@@ -169,7 +169,7 @@ def find_best_point(im, possible_points, robot_loc):
     return (best_point[0], best_point[1])
 
 
-def find_waypoints(im, path):
+def find_waypoints(im, path, roboy_ij):
     """ Place waypoints along the path
     @param im - the thresholded image
     @param path - the initial path
