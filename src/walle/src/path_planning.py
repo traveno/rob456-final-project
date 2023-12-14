@@ -129,34 +129,9 @@ def dijkstra(im, robot_ij, goal_ij):
             # temp_distance is just current node score + euclidean distance unless there is a wall in the way
             # set all distances to 1
             # if we were doing something more complicated edge_weight would actually be the dist between current i,j and neighbor i,j
-            # gonna actually use a special flavor of dijkstra's here instead of A*
-            # Uniform cost search! Basically if we've visited a node decrease it's key- else add it to the queue
             # psuedocode here: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs
-
-            # first set edge weight
-            if node_ij[1] == neighbor[1]:  # if these are the same location
-                edge_weight = 1
-            else:
-                edge_weight = np.sqrt(2)
-
-            # calculate cost to get to next node (current node score + edge_weight)
-            cost = node_score + edge_weight
-
-            if neighbor not in visited:
-                # add to priority queue and visited dictionary
-                visited[neighbor] = (cost, node_ij, False)
-                heapq.heappush(priority_queue, (cost, neighbor))
-            elif visited[neighbor][0] > cost:  # if already visited and higher cost
-                # replace existing neighbor with new tuple with cost = to lower value
-                visited[neighbor] = (cost, node_ij, False)
-
-            # edge weight is just the euclidean distance
-            # temp_distance is just current node score + euclidean distance unless there is a wall in the way
-            # set all distances to 1
-            # if we were doing something more complicated edge_weight would actually be the dist between current i,j and neighbor i,j
-            # gonna actually use a special flavor of dijkstra's here instead of A*
-            # Uniform cost search! Basically if we've visited a node decrease it's key- else add it to the queue
-            # psuedocode here: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs
+            # Beautiful path planning ref: https://www.redblobgames.com/pathfinding/a-star/implementation.html
+            # heuristics: https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#heuristics-for-grid-maps
 
             #first set edge weight
             if node_ij[1] == neighbor[1]: #if these are the same location
@@ -167,13 +142,21 @@ def dijkstra(im, robot_ij, goal_ij):
             #calculate cost to get to next node (current node score + edge_weight)
             cost = node_score + edge_weight
 
-            if neighbor not in visited:
-                #add to priority queue and visited dictionary
+            #calculate a better heuristic
+            #for moving in 8 directions, the heuristic should be 4 * D2 which is the cost of moving diagonally
+            di = np.abs(neighbor[0] - goal_ij[0])
+            dj = np.abs(neighbor[1] - goal_ij[1])
+            cheb = 1 * (di + dj) + (1 - 2 * 1) * min(di, dj) #chebyschev distance
+            #euclid = np.sqrt(di ** 2 + dj ** 2)
+            #octile = 1 * (di + dj) + (np.sqrt(2) - 2 * 1) * min(di, dj)
+
+            if neighbor not in visited: 
                 visited[neighbor] = (cost, node_ij, False)
-                heapq.heappush(priority_queue, (cost, neighbor))
-            elif visited[neighbor][0] > cost: #if already visited and higher cost
-                #replace existing neighbor with new tuple with cost = to lower value
+                heuristic = cost + cheb
+                heapq.heappush(priority_queue, (heuristic, neighbor))
+            elif cost < visited[neighbor][0]: #if visted, replace with lower cost
                 visited[neighbor] = (cost, node_ij, False)
+                
 
     
     # Now check that we actually found the goal node
