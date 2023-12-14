@@ -38,6 +38,9 @@ class SLAMNode:
         self.path_points = []
         self.old_path_points = []
 
+        # Cache map data so if a new path comes in, we can render an image immediately
+        self.viewer_cache = None
+
     def execute(self, map):
         rospy.loginfo(f'----BEGIN PROCESSING----')
         rospy.loginfo(f"Received SLAM map to process")
@@ -58,6 +61,9 @@ class SLAMNode:
         
         # Send a colored image to our viewer
         self.annotate_image(map_thresh, map_width, map_height, map.info, offset_ij)
+        
+        # Cache map data so we can render new paths without needing to wait for SLAM
+        self.viewer_cache = (map_thresh, map_width, map_height, map.info, offset_ij)
 
         start = time.time()
         pmap = ProcessedMap()
@@ -78,6 +84,10 @@ class SLAMNode:
         new_path_points = np.fromiter(path_msg.path, int).reshape(-1, 2)
         self.old_path_points.extend(self.path_points)
         self.path_points = new_path_points
+        
+        # If the viewer cache is defined, immediately render a new image
+        if self.viewer_cache is not None:
+            self.annotate_image(*self.viewer_cache)
 
     # This function colors and draws current path and previous path(s).
     # Result is submitted it to the image viewer for our viewing pleasure.
