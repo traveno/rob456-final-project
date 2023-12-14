@@ -14,7 +14,7 @@ class StudentDriver(Driver):
 	This class implements the logic to move the robot to a specific place in the world.  All of the
 	interesting functionality is hidden in the parent class.
 	'''
-	def __init__(self, threshold=0.1):
+	def __init__(self, threshold=0.3):
 		super().__init__('odom')
 		# Set the threshold to a reasonable number
 		self._threshold = threshold
