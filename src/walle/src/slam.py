@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+# https://github.com/traveno/rob456-final-project
+# Running this project will need some additional files!
+# This includes ProcessedMsg type for the SLAM node.
+# The SLAM processing code is in slam.py. It receives
+# the SLAM updates and sends the processed version
+# to this controller.
+
 import rospy
 import numpy as np
 from math import trunc
