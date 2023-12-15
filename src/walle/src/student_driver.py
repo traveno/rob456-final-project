@@ -80,7 +80,7 @@ class StudentDriver(Driver):
 			self._previous_target = target
 			self._target_callback_count = 0
 
-		# If the robot is stuck, then it is likely in a corner
+		# If the robot is stuck, then check if we have timed out of the position
 		if self._target_callback_count > STUCK_THRESHOLD:
 			self._stuck_pub.publish(True)
 			rospy.loginfo(f'I am stuck in one spot for too long!, wiping waypoints!')
