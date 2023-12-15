@@ -24,7 +24,7 @@ class StudentDriver(Driver):
 		self._target_callback_count = 0
 
 		# publisher message to indicate if the robot is stuck
-		self._stuck_pub = rospy.Publisher('stuck', Bool, queue_size=10)
+		self._stuck_pub = rospy.Publisher('robot_stuck', Bool, queue_size=10)
 
 	def detect_corners(self, lidar_data):
 		'''
