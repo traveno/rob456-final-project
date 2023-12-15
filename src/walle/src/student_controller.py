@@ -34,7 +34,7 @@ class StudentController(RobotController):
     def stuck_callback(self, msg):
         if msg.data:
             rospy.loginfo("Robot is stuck!")
-            self._waypoints = None 
+            self.set_waypoints([])
             self.find_new_goal()
 
     def distance_update(self, distance):
