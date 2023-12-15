@@ -10,6 +10,7 @@
 import sys
 import rospy
 import numpy as np
+from std_msgs.msg import Bool
 
 from controller import RobotController
 import exploring
@@ -35,6 +36,14 @@ class StudentController(RobotController):
         self.pmap = None
         self.map_info = None
         self.robot_map_yx = None
+        self._stuck_subscriber = rospy.Subscriber("robot_stuck", Bool, self.stuck_callback)
+
+    # Helper function for close_enough_to_waypoint (in StudentDriver) if the robot is stuck then force it to calculate a new goal
+    def stuck_callback(self, msg):
+        if msg.data:
+            rospy.loginfo("Robot is stuck!")
+            self.set_waypoints([])
+            self.find_new_goal()
 
     def distance_update(self, distance):
         """

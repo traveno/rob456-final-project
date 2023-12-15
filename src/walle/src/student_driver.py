@@ -10,11 +10,13 @@
 import sys
 import rospy
 import numpy as np
+from std_msgs.msg import Bool
 
 from new_driver import Driver
 
 from math import atan2, pi, sqrt
 
+STUCK_THRESHOLD = 10
 
 class StudentDriver(Driver):
 	'''
@@ -25,6 +27,11 @@ class StudentDriver(Driver):
 		super().__init__('odom')
 		# Set the threshold to a reasonable number
 		self._threshold = threshold
+		self._previous_target = None
+		self._target_callback_count = 0
+
+		# publisher message to indicate if the robot is stuck
+		self._stuck_pub = rospy.Publisher('robot_stuck', Bool, queue_size=10)
 
 	def detect_corners(self, lidar_data):
 		'''
@@ -66,6 +73,19 @@ class StudentDriver(Driver):
 		- target: Target waypoint coordinates.
 		- lidar: LiDAR data representing the surrounding environment.
 		'''
+		# Check if the robot is stuck
+		if self._previous_target == target:
+			self._target_callback_count += 1
+		else:
+			self._previous_target = target
+			self._target_callback_count = 0
+
+		# If the robot is stuck, then it is likely in a corner
+		if self._target_callback_count > STUCK_THRESHOLD:
+			self._stuck_pub.publish(True)
+			rospy.loginfo(f'I am stuck in one spot for too long!, wiping waypoints!')
+			return False
+
 		safe_distance = 0.5 # 0.5 meters
 
 		ranges = np.array(lidar.ranges)
@@ -76,13 +96,13 @@ class StudentDriver(Driver):
 		y_values = ranges * np.sin(thetas)
 		lidar_points = np.column_stack((x_values, y_values))
 
-		# check to see if robot is in a corner
-		# if self.detect_corners(lidar_points):  # corner threshold = sensitivity
-		# 	# self.abandon_waypoints() # This should call to TC's generate new waypoints logic 
-		# 	return False
-
 		# Check if within the simple distance threshold.
 		if distance < self._threshold:
+			# check to see if robot is in a corner
+			if self.detect_corners(lidar_points):  # corner threshold = sensitivity
+				self._stuck_pub.publish(True) # tell the controller that the robot is stuck
+				rospy.loginfo(f'I am stuck in a corner, wiping waypoints!')
+
 			# get the closest distance to the front of the robot
 			front_indices = np.where(np.abs(y_values) < 0.22) # robot is 0.19 (half), increased to .22 to provide a moe for the robot
 			front_ranges = ranges[front_indices]
@@ -91,7 +111,9 @@ class StudentDriver(Driver):
 
 			# Check if there are no obstacles within the safe distance.
 			if shortest >= (safe_distance + 0.19): 
+				self._stuck_pub.publish(False) # tell the controller that the robot is not stuck
 				return True
+		self._stuck_pub.publish(False) # tell the controller that the robot is not stuck
 		return False
 
 	def calc_turn_influence(self, lidar, dist_threshold, clamp):
